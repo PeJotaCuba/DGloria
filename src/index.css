@@ -1,0 +1,45 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --crema: #FFFBF2;
+    --negro: #1E1E1E;
+    --burdeos: #9B1B30;
+    --arena: #E9E2D6;
+    --gris-calido: #8A8380;
+  }
+
+  body {
+    background-color: #1E1E1E;
+    color: #FFFBF2;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    overflow-x: hidden;
+  }
+}
+
+.font-serif {
+  font-family: 'Playfair Display', Georgia, Cambria, 'Times New Roman', serif;
+}
+
+.font-sans {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* Glassmorphism surfaces aligned with Doña Gloria palette */
+.glass-panel-dark {
+  background: rgba(30, 30, 30, 0.78);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(233, 226, 214, 0.12);
+}
+
+.glass-panel-cream {
+  background: rgba(255, 251, 242, 0.94);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(155, 27, 48, 0.15);
+}
+
+.hairline-divider {
+  border-color: rgba(233, 226, 214, 0.15);
+}

@@ -1,0 +1,6 @@
+{
+  "name": "Doña Gloria Bar-Terraza",
+  "description": "Landing page inmersiva y elegante de Doña Gloria Bar-Terraza con fondo visual interactivo, catálogo de menú y módulo de reservas.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
