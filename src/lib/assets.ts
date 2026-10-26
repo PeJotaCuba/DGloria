@@ -38,7 +38,7 @@ export const ASSETS = {
   
   // Developer Agency Brand Logo (Nectys)
   nectysLogo: '/assets/aistudio/nectys_final.png',
-  nectysLogoOriginal: '/assets/aistudio/4_Nectys_TRANSP_BLANCA_16x9_4K.png',
+  nectysLogoOriginal: '/assets/aistudio/nectyslogo.png',
 
   // Immersive Background Photo (Full establishment terrace photo)
   establishmentBg: '/assets/aistudio/fondo.jpeg',
