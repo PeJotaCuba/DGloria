@@ -9,8 +9,10 @@
  */
 
 import type * as auth from "../auth.js";
+import type * as devices from "../devices.js";
 import type * as files from "../files.js";
 import type * as menuDishes from "../menuDishes.js";
+import type * as users from "../users.js";
 
 import type {
   ApiFromModules,
@@ -20,8 +22,10 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   auth: typeof auth;
+  devices: typeof devices;
   files: typeof files;
   menuDishes: typeof menuDishes;
+  users: typeof users;
 }>;
 
 /**
