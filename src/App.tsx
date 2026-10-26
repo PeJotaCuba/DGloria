@@ -1,9 +1,4 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useScrollProgress } from './hooks/useScrollProgress';
 import { ImmersiveBackground } from './components/ImmersiveBackground';
 import { Navbar } from './components/Navbar';
@@ -13,10 +8,29 @@ import { MenuSection } from './components/MenuSection';
 import { ReservationSection } from './components/ReservationSection';
 import { ContactSection } from './components/ContactSection';
 import { Footer } from './components/Footer';
+import { MenuPage } from './pages/MenuPage';
 
 export default function App() {
+  const [currentPath, setCurrentPath] = useState<string>(() => window.location.pathname);
   const { progress, prefersReducedMotion } = useScrollProgress();
 
+  useEffect(() => {
+    const handleLocationChange = () => {
+      setCurrentPath(window.location.pathname);
+    };
+
+    window.addEventListener('popstate', handleLocationChange);
+    return () => {
+      window.removeEventListener('popstate', handleLocationChange);
+    };
+  }, []);
+
+  // Si la ruta es /menu o /menu/, renderizar la página exclusiva del menú
+  if (currentPath === '/menu' || currentPath === '/menu/') {
+    return <MenuPage />;
+  }
+
+  // Página de inicio (Landing Page)
   return (
     <div className="relative min-h-screen bg-[#1E1E1E] text-[#FFFBF2] overflow-x-hidden selection:bg-[#9B1B30] selection:text-[#FFFBF2]">
       {/* Permanent Immersive Photographic Background with Smooth Scroll Zoom */}
