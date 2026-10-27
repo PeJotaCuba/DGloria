@@ -277,14 +277,6 @@ export const MenuPage: React.FC = () => {
 
                   <div className="pt-2 border-t border-[#EADFCB]/60 flex items-center justify-between text-xs text-[#8A8380]">
                     <span className="italic font-serif">Doña Gloria Terraza</span>
-                    <a
-                      href={`https://wa.me/${WHATSAPP_URL_NUMBER}?text=${encodeURIComponent(`Hola, me interesa pedir el plato: ${dish.name}`)}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 font-semibold text-[#9B1B30] hover:underline uppercase text-[11px] tracking-wider"
-                    >
-                      <span>Consultar</span>
-                    </a>
                   </div>
                 </div>
               </article>
