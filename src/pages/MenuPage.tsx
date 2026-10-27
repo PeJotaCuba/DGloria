@@ -58,11 +58,11 @@ export const MenuPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-[#FFFBF2] text-[#1E1E1E] font-sans flex flex-col selection:bg-[#9B1B30] selection:text-[#FFFBF2]">
       {/* Top Header & Branding Bar */}
-      <header className="sticky top-0 z-40 bg-[#FFFBF2]/95 backdrop-blur-md border-b border-[#EADFCB] transition-shadow">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between gap-4">
+      <header className="sticky top-0 z-40 bg-[#1E1E1E]/95 backdrop-blur-md border-b border-[#333333] transition-shadow">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex items-center justify-between gap-4">
           <button
             onClick={handleGoHome}
-            className="inline-flex items-center gap-2 px-3.5 py-2 text-xs uppercase tracking-wider font-medium text-[#1E1E1E] hover:text-[#9B1B30] bg-[#F5ECDC] hover:bg-[#EBDDC5] border border-[#E2D4BB] rounded transition-all duration-200"
+            className="inline-flex items-center gap-2 px-3.5 py-2 text-xs uppercase tracking-wider font-medium text-[#FFFBF2] hover:text-[#E3B87C] bg-[#2A2A2A] hover:bg-[#333333] border border-[#444] rounded transition-all duration-200"
             title="Volver a la portada principal"
           >
             <ArrowLeft className="w-4 h-4" />
@@ -71,31 +71,22 @@ export const MenuPage: React.FC = () => {
           </button>
 
           <div className="flex items-center gap-3 text-center">
-            <img
-              src={ASSETS.logoTransparent}
-              alt="Logo Doña Gloria"
-              className="h-9 sm:h-11 w-auto object-contain"
-            />
+            <div className="h-10 sm:h-12 w-10 sm:w-12 rounded-full bg-[#1E1E1E] border border-[#E3B87C]/40 flex items-center justify-center p-1 shadow-md">
+              <img
+                src={ASSETS.logoTransparent}
+                alt="Logo Doña Gloria"
+                className="w-full h-full object-contain scale-110"
+              />
+            </div>
             <div className="text-left hidden xs:block">
-              <span className="block font-serif text-lg font-bold text-[#1E1E1E] leading-tight">
+              <span className="block font-serif text-base sm:text-lg font-bold text-[#FFFBF2] leading-tight tracking-tight">
                 Doña Gloria
               </span>
-              <span className="block text-[10px] uppercase tracking-widest text-[#9B1B30] font-semibold">
-                Bar-Terraza
+              <span className="block text-[10px] uppercase tracking-widest text-[#E3B87C] font-semibold">
+                Bar — Terraza
               </span>
             </div>
           </div>
-
-          <a
-            href={`https://wa.me/${WHATSAPP_URL_NUMBER}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 px-4 py-2 text-xs uppercase tracking-wider font-semibold text-[#FFFBF2] bg-[#9B1B30] hover:bg-[#801426] rounded shadow-sm transition-colors duration-200"
-          >
-            <Phone className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Consultar por WhatsApp</span>
-            <span className="sm:hidden">WhatsApp</span>
-          </a>
         </div>
       </header>
 
@@ -134,34 +125,35 @@ export const MenuPage: React.FC = () => {
 
       {/* Category Filter Tabs */}
       <section className="bg-[#F7F0E3] border-b border-[#EADFCB] sticky top-[65px] z-30 shadow-xs">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex items-center justify-start sm:justify-center overflow-x-auto no-scrollbar gap-2">
+        <div className="max-w-md mx-auto px-4 py-3.5 grid grid-cols-2 gap-2">
           <button
             onClick={() => setSelectedCategory('all')}
-            className={`px-4 py-2 text-xs uppercase font-semibold tracking-wider rounded-md whitespace-nowrap transition-all duration-200 ${
+            className={`w-full px-4 py-2 text-xs uppercase font-semibold tracking-wider rounded-md transition-all duration-200 ${
               selectedCategory === 'all'
                 ? 'bg-[#9B1B30] text-[#FFFBF2] shadow-sm'
                 : 'bg-[#FFFBF2]/70 text-[#5A5350] hover:text-[#1E1E1E] hover:bg-[#FFFBF2] border border-[#E5DAC6]'
             }`}
           >
-            Todos los Platos ({dishes.length})
+            Todas
           </button>
 
-          {categories.map((cat) => {
-            const count = dishes.filter((d) => d.category === cat).length;
-            return (
-              <button
-                key={cat}
-                onClick={() => setSelectedCategory(cat)}
-                className={`px-4 py-2 text-xs uppercase font-semibold tracking-wider rounded-md whitespace-nowrap transition-all duration-200 ${
-                  selectedCategory === cat
-                    ? 'bg-[#9B1B30] text-[#FFFBF2] shadow-sm'
-                    : 'bg-[#FFFBF2]/70 text-[#5A5350] hover:text-[#1E1E1E] hover:bg-[#FFFBF2] border border-[#E5DAC6]'
-                }`}
-              >
-                {cat} {count > 0 ? `(${count})` : ''}
-              </button>
-            );
-          })}
+          {[
+            { label: 'Entrantes', category: 'Entrantes' },
+            { label: 'Platos Fuertes', category: 'Platos Fuertes' },
+            { label: 'Coctelería', category: 'Coctelería' },
+          ].map((item) => (
+            <button
+              key={item.label}
+              onClick={() => setSelectedCategory(item.category)}
+              className={`w-full px-4 py-2 text-xs uppercase font-semibold tracking-wider rounded-md transition-all duration-200 ${
+                selectedCategory === item.category
+                  ? 'bg-[#9B1B30] text-[#FFFBF2] shadow-sm'
+                  : 'bg-[#FFFBF2]/70 text-[#5A5350] hover:text-[#1E1E1E] hover:bg-[#FFFBF2] border border-[#E5DAC6]'
+              }`}
+            >
+              {item.label}
+            </button>
+          ))}
         </div>
       </section>
 

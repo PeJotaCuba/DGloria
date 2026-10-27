@@ -34,7 +34,7 @@ export const ASSETS = {
   // Commercial Logos
   logoTransparent: '/assets/aistudio/logo_transparent.png',
   logoLight: '/assets/aistudio/WhatsApp_Image_2026-09-28_at_4.23.01_PM-revisa-estas-imagenes-con-el-logo-de-un-bar-restau-dame-esta__1__eaf4b20c.jpg',
-  logoDark: '/assets/aistudio/WhatsApp_Image_2026-09-28_at_4.23.01_PM-revisa-estas-imagenes-con-el-logo-de-un-bar-restau-dame-esta__2__379337b3.jpg',
+  logoDark: '/assets/aistudio/logo_transparent.png',
   
   // Developer Agency Brand Logo (Nectys)
   nectysLogo: '/assets/aistudio/nectys_final.png',
@@ -47,9 +47,9 @@ export const ASSETS = {
   dishes: [
     {
       id: 'hamburguesa-dona-gloria',
-      title: 'Hamburguesa Especial de la Casa',
+      title: 'Hamburguesa Doña Gloria',
       subtitle: 'Acompañada de tostones crocantes aderezados',
-      category: 'Especialidades de Terraza',
+      category: 'Platos Fuertes',
       image: '/assets/aistudio/Do_a_Gloria_1_a70d0bc0.jpeg',
       description: 'Hamburguesa artesanal de varias capas con quesos fundidos, salsas especiales de la casa y guarnición de tostones dorados en salsa ligera.',
       tag: 'Plato Insignia'
@@ -67,7 +67,7 @@ export const ASSETS = {
       id: 'coctel-de-camaron',
       title: 'Cóctel de Camarón',
       subtitle: 'Con toques tropicales y cítricos',
-      category: 'Entrantes & Coctelería',
+      category: 'Coctelería',
       image: '/assets/aistudio/C_ctel_de_camar_n_02e044d0.jpeg',
       description: 'Camarones selectos en copa con salsa rosada suave, dados de piña fresca confitada, rodaja de lima natural y brocheta decorada.',
       tag: 'De la Barra'

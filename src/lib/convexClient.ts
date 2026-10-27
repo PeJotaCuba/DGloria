@@ -51,3 +51,17 @@ export async function getCategoriesFromConvex(): Promise<string[]> {
     return [];
   }
 }
+
+/**
+ * Consulta pública HTTP para obtener los platos destacados para la portada (máx. 3).
+ */
+export async function getFeaturedDishesFromConvex(): Promise<ConvexDish[]> {
+  try {
+    const dishes = await convexHttpClient.query(api.menuDishes.getFeaturedDishes, {});
+    return dishes as ConvexDish[];
+  } catch (error) {
+    console.warn("No se pudieron cargar los platos destacados desde Convex:", error);
+    return [];
+  }
+}
+
