@@ -45,10 +45,12 @@ export const MenuPage: React.FC = () => {
     window.scrollTo(0, 0);
   }, []);
 
-  // Filtrar por categoría seleccionada
+  // Filtrar por categoría seleccionada de forma segura y consistente
   const filteredDishes = selectedCategory === 'all'
     ? dishes
-    : dishes.filter((d) => d.category === selectedCategory);
+    : dishes.filter(
+        (d) => d.category && d.category.trim().toLowerCase() === selectedCategory.trim().toLowerCase()
+      );
 
   const handleGoHome = () => {
     window.history.pushState({}, '', '/');
