@@ -1,49 +1,23 @@
 import React, { useEffect, useState } from 'react';
 import { ArrowLeft, RefreshCw, Utensils, Phone, Clock, MapPin, Sparkles } from 'lucide-react';
-import { getPublishedDishesFromConvex, getCategoriesFromConvex, ConvexDish } from '../lib/convexClient';
+import { useQuery } from 'convex/react';
+import { api } from '../../convex/_generated/api';
+import { ConvexDish } from '../lib/convexClient';
 import { ASSETS, BUSINESS_INFO, WHATSAPP_URL_NUMBER } from '../lib/assets';
 
 export const MenuPage: React.FC = () => {
-  const [dishes, setDishes] = useState<ConvexDish[]>([]);
-  const [categories, setCategories] = useState<string[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<boolean>(false);
 
-  const fetchMenuData = async () => {
-    setLoading(true);
-    setError(false);
-    try {
-      const [fetchedDishes, fetchedCats] = await Promise.all([
-        getPublishedDishesFromConvex(),
-        getCategoriesFromConvex(),
-      ]);
-
-      setDishes(fetchedDishes);
-
-      // Extraer categorías si la consulta específica falló o devolvió vacío
-      if (fetchedCats.length > 0) {
-        setCategories(fetchedCats);
-      } else {
-        const catSet = new Set<string>();
-        fetchedDishes.forEach((d) => {
-          if (d.category) catSet.add(d.category);
-        });
-        setCategories(Array.from(catSet));
-      }
-    } catch (err) {
-      console.error('Error al cargar la carta digital:', err);
-      setError(true);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Consulta reactiva en tiempo real a los platos publicados desde Convex
+  const publishedDishesQuery = useQuery(api.menuDishes.getPublishedDishes, {});
 
   useEffect(() => {
-    fetchMenuData();
     // Desplazar al inicio al cargar la página
     window.scrollTo(0, 0);
   }, []);
+
+  const loading = publishedDishesQuery === undefined;
+  const dishes = (publishedDishesQuery || []) as ConvexDish[];
 
   // Filtrar por categoría seleccionada de forma segura y consistente
   const filteredDishes = selectedCategory === 'all'
@@ -181,31 +155,8 @@ export const MenuPage: React.FC = () => {
           </div>
         )}
 
-        {/* Error State */}
-        {!loading && error && (
-          <div className="max-w-md mx-auto text-center py-16 px-6 bg-[#F7F0E3] border border-[#EADFCB] rounded-lg shadow-xs space-y-4">
-            <div className="w-12 h-12 rounded-full bg-[#9B1B30]/10 flex items-center justify-center mx-auto text-[#9B1B30]">
-              <Utensils className="w-6 h-6" />
-            </div>
-            <h3 className="font-serif text-xl font-bold text-[#1E1E1E]">
-              No se pudo conectar con la carta digital
-            </h3>
-            <p className="text-xs text-[#6A6360] leading-relaxed">
-              Ocurrió un problema temporal al recuperar los platos publicados desde el servidor. 
-              Por favor, reintenta la conexión.
-            </p>
-            <button
-              onClick={fetchMenuData}
-              className="inline-flex items-center gap-2 px-5 py-2.5 text-xs font-semibold uppercase tracking-wider text-[#FFFBF2] bg-[#9B1B30] hover:bg-[#801426] rounded transition-colors"
-            >
-              <RefreshCw className="w-3.5 h-3.5" />
-              <span>Reintentar Conexión</span>
-            </button>
-          </div>
-        )}
-
         {/* Empty State */}
-        {!loading && !error && filteredDishes.length === 0 && (
+        {!loading && filteredDishes.length === 0 && (
           <div className="max-w-md mx-auto text-center py-16 px-6 bg-[#F7F0E3] border border-[#EADFCB] rounded-lg shadow-xs space-y-4">
             <div className="w-12 h-12 rounded-full bg-[#9B1B30]/10 flex items-center justify-center mx-auto text-[#9B1B30]">
               <Sparkles className="w-6 h-6" />
@@ -230,7 +181,7 @@ export const MenuPage: React.FC = () => {
         )}
 
         {/* Dishes Grid */}
-        {!loading && !error && filteredDishes.length > 0 && (
+        {!loading && filteredDishes.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {filteredDishes.map((dish) => (
               <article

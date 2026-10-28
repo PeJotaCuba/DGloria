@@ -3,38 +3,20 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Eye, X, Utensils, ArrowRight } from 'lucide-react';
-import { getFeaturedDishesFromConvex, ConvexDish } from '../lib/convexClient';
+import { useQuery } from 'convex/react';
+import { api } from '../../convex/_generated/api';
+import { ConvexDish } from '../lib/convexClient';
 
 export const MenuSection: React.FC = () => {
-  const [featuredDishes, setFeaturedDishes] = useState<ConvexDish[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
   const [selectedDish, setSelectedDish] = useState<ConvexDish | null>(null);
 
-  useEffect(() => {
-    let isMounted = true;
-    const fetchFeatured = async () => {
-      try {
-        const dishes = await getFeaturedDishesFromConvex();
-        if (isMounted) {
-          // Convex ya los devuelve filtrados por isPublished: true, isFeatured: true y ordenados por featuredOrder (máx. 3)
-          setFeaturedDishes(dishes);
-        }
-      } catch (err) {
-        console.warn('Error al obtener platos destacados de Convex:', err);
-      } finally {
-        if (isMounted) {
-          setLoading(false);
-        }
-      }
-    };
+  // Consulta reactiva en tiempo real a los platos destacados desde Convex
+  const featuredQuery = useQuery(api.menuDishes.getFeaturedDishes);
 
-    fetchFeatured();
-    return () => {
-      isMounted = false;
-    };
-  }, []);
+  const loading = featuredQuery === undefined;
+  const featuredDishes = (featuredQuery || []) as ConvexDish[];
 
   const handleOpenFullMenu = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -42,7 +24,7 @@ export const MenuSection: React.FC = () => {
     window.dispatchEvent(new Event('popstate'));
   };
 
-  // Si no está cargando y no hay ningún plato destacado configurado, ocultar la sección
+  // Si no está cargando y no hay ningún plato destacado configurado o publicado, ocultar la sección
   if (!loading && featuredDishes.length === 0) {
     return null;
   }
