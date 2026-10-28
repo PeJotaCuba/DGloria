@@ -42,14 +42,14 @@ export const getPublishedDishes = query({
 
     if (args.category) {
       dishes = await ctx.db
-        .query("menu_dishes")
+        .query("menu_items")
         .withIndex("by_published_category", (q) =>
           q.eq("isPublished", true).eq("category", args.category!)
         )
         .collect();
     } else {
       dishes = await ctx.db
-        .query("menu_dishes")
+        .query("menu_items")
         .withIndex("by_published", (q) => q.eq("isPublished", true))
         .collect();
     }
@@ -67,6 +67,9 @@ export const getPublishedDishes = query({
           name: dish.name,
           description: dish.description,
           category: dish.category,
+          price: (dish as any).price,
+          priceCup: (dish as any).priceCup,
+          priceFormatted: (dish as any).priceFormatted,
           imageId: dish.imageId,
           imageUrl: resolvedImage || dish.imageUrl || "",
           isPublished: dish.isPublished,
@@ -91,7 +94,7 @@ export const getFeaturedDishes = query({
   args: {},
   handler: async (ctx) => {
     const dishes = await ctx.db
-      .query("menu_dishes")
+      .query("menu_items")
       .withIndex("by_featured", (q) =>
         q.eq("isPublished", true).eq("isFeatured", true)
       )
@@ -112,6 +115,9 @@ export const getFeaturedDishes = query({
           name: dish.name,
           description: dish.description,
           category: dish.category,
+          price: (dish as any).price,
+          priceCup: (dish as any).priceCup,
+          priceFormatted: (dish as any).priceFormatted,
           imageId: dish.imageId,
           imageUrl: resolvedImage || dish.imageUrl || "",
           isPublished: dish.isPublished,
@@ -131,7 +137,7 @@ export const getCategories = query({
   args: {},
   handler: async (ctx) => {
     const published = await ctx.db
-      .query("menu_dishes")
+      .query("menu_items")
       .withIndex("by_published", (q) => q.eq("isPublished", true))
       .collect();
 
@@ -210,6 +216,9 @@ export const createDish = mutation({
     name: v.string(),
     description: v.string(),
     category: v.string(),
+    price: v.optional(v.union(v.number(), v.string())),
+    priceCup: v.optional(v.number()),
+    priceFormatted: v.optional(v.string()),
     imageId: v.optional(v.string()),
     imageUrl: v.optional(v.string()),
     isPublished: v.boolean(),
@@ -236,6 +245,9 @@ export const createDish = mutation({
       name: args.name.trim(),
       description: args.description.trim(),
       category: args.category.trim(),
+      price: args.price,
+      priceCup: args.priceCup,
+      priceFormatted: args.priceFormatted,
       imageId: args.imageId,
       imageUrl: args.imageUrl,
       isPublished: args.isPublished,
@@ -260,6 +272,9 @@ export const updateDish = mutation({
     name: v.optional(v.string()),
     description: v.optional(v.string()),
     category: v.optional(v.string()),
+    price: v.optional(v.union(v.number(), v.string())),
+    priceCup: v.optional(v.number()),
+    priceFormatted: v.optional(v.string()),
     imageId: v.optional(v.string()),
     imageUrl: v.optional(v.string()),
     isPublished: v.optional(v.boolean()),
@@ -282,6 +297,9 @@ export const updateDish = mutation({
     if (args.name !== undefined) updates.name = args.name.trim();
     if (args.description !== undefined) updates.description = args.description.trim();
     if (args.category !== undefined) updates.category = args.category.trim();
+    if (args.price !== undefined) (updates as any).price = args.price;
+    if (args.priceCup !== undefined) (updates as any).priceCup = args.priceCup;
+    if (args.priceFormatted !== undefined) (updates as any).priceFormatted = args.priceFormatted;
     if (args.imageId !== undefined) updates.imageId = args.imageId;
     if (args.imageUrl !== undefined) updates.imageUrl = args.imageUrl;
     if (args.isPublished !== undefined) updates.isPublished = args.isPublished;

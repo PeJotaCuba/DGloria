@@ -7,7 +7,7 @@ import React, { useState } from 'react';
 import { Eye, X, Utensils, ArrowRight } from 'lucide-react';
 import { useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
-import { ConvexDish } from '../lib/convexClient';
+import { ConvexDish, formatDishPrice } from '../lib/convexClient';
 
 export const MenuSection: React.FC = () => {
   const [selectedDish, setSelectedDish] = useState<ConvexDish | null>(null);
@@ -139,11 +139,13 @@ export const MenuSection: React.FC = () => {
                       </p>
                     </div>
 
-                    <div className="pt-4 mt-4 border-t border-[#E9E2D6]/10 flex items-center justify-between text-xs text-[#8A8380]">
-                      <span>Elaboración artesanal</span>
-                      <span className="text-[#9B1B30] font-medium group-hover:underline">
-                        Ver detalle →
-                      </span>
+                    <div className="pt-4 mt-4 border-t border-[#E9E2D6]/10 flex items-center justify-between text-xs">
+                      <span className="text-[#8A8380] italic">Elaboración artesanal</span>
+                      {formatDishPrice(dish) && (
+                        <span className="font-serif font-bold text-[#E3B87C] text-sm tracking-wide bg-[#1E1E1E] px-2.5 py-1 rounded border border-[#E3B87C]/30">
+                          {formatDishPrice(dish)}
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>

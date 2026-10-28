@@ -14,6 +14,9 @@ export interface ConvexDish {
   name: string;
   description: string;
   category: string;
+  price?: number | string;
+  priceCup?: number;
+  priceFormatted?: string;
   imageId?: string;
   imageUrl?: string;
   isPublished: boolean;
@@ -25,8 +28,32 @@ export interface ConvexDish {
 }
 
 /**
+ * Formatea el precio real guardado en Convex sin inventar importes ficticios.
+ */
+export function formatDishPrice(dish: ConvexDish): string | null {
+  if (dish.priceFormatted && dish.priceFormatted.trim()) {
+    return dish.priceFormatted.trim();
+  }
+
+  const p = dish.price ?? dish.priceCup;
+  if (p !== undefined && p !== null && p !== "") {
+    if (typeof p === "number") {
+      return `$${p.toLocaleString()} CUP`;
+    }
+    const pStr = String(p).trim();
+    if (pStr) {
+      if (pStr.toLowerCase().includes("cup") || pStr.includes("$")) {
+        return pStr;
+      }
+      return `$${pStr} CUP`;
+    }
+  }
+
+  return null;
+}
+
+/**
  * Consulta pública HTTP para obtener la carta de platos publicados.
- * Propaga errores para que la interfaz maneje adecuadamente los estados de conexión y reintento.
  */
 export async function getPublishedDishesFromConvex(category?: string): Promise<ConvexDish[]> {
   try {
@@ -55,7 +82,6 @@ export async function getCategoriesFromConvex(): Promise<string[]> {
 
 /**
  * Consulta pública HTTP para obtener los platos destacados para la portada (máx. 3).
- * Propaga errores para que el componente identifique fallos reales de red.
  */
 export async function getFeaturedDishesFromConvex(): Promise<ConvexDish[]> {
   try {

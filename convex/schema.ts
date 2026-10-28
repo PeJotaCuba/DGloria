@@ -7,6 +7,9 @@ export default defineSchema(
     menu_dishes: defineTable({
       name: v.string(),
       description: v.string(),
+      price: v.optional(v.union(v.number(), v.string())),
+      priceCup: v.optional(v.number()),
+      priceFormatted: v.optional(v.string()),
       imageId: v.optional(v.string()),
       imageUrl: v.optional(v.string()),
       category: v.string(),
@@ -84,13 +87,28 @@ export default defineSchema(
     menu_items: defineTable({
       id: v.optional(v.string()),
       code: v.optional(v.string()),
-      category: v.optional(v.string()),
+      name: v.string(),
+      description: v.string(),
+      price: v.optional(v.union(v.number(), v.string())),
+      priceCup: v.optional(v.number()),
+      priceFormatted: v.optional(v.string()),
+      category: v.string(),
+      imageId: v.optional(v.string()),
+      imageUrl: v.optional(v.string()),
+      isPublished: v.boolean(),
+      isFeatured: v.boolean(),
+      featuredOrder: v.optional(v.number()),
+      displayOrder: v.number(),
       available: v.optional(v.boolean()),
+      createdAt: v.number(),
+      updatedAt: v.number(),
     })
       .index("by_available", ["available"])
+      .index("by_published", ["isPublished", "displayOrder"])
+      .index("by_published_category", ["isPublished", "category", "displayOrder"])
+      .index("by_featured", ["isPublished", "isFeatured", "featuredOrder"])
       .index("by_custom_id", ["id"])
       .index("by_code", ["code"])
-      .index("by_available_and_category", ["available", "category"])
       .index("by_category", ["category"]),
 
     // Registros de auditoría

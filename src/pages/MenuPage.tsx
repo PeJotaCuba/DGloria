@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { ArrowLeft, RefreshCw, Utensils, Phone, Clock, MapPin, Sparkles } from 'lucide-react';
 import { useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
-import { ConvexDish } from '../lib/convexClient';
+import { ConvexDish, formatDishPrice } from '../lib/convexClient';
 import { ASSETS, BUSINESS_INFO, WHATSAPP_URL_NUMBER } from '../lib/assets';
 
 export const MenuPage: React.FC = () => {
@@ -99,37 +99,36 @@ export const MenuPage: React.FC = () => {
         </div>
       </section>
 
-      {/* Category Filter Tabs */}
+      {/* Category Filter Tabs (Dynamic from Convex) */}
       <section className="bg-[#F7F0E3] border-b border-[#EADFCB] sticky top-[65px] z-30 shadow-xs">
-        <div className="max-w-md mx-auto px-4 py-3.5 grid grid-cols-2 gap-2">
+        <div className="max-w-2xl mx-auto px-4 py-3.5 flex flex-wrap items-center justify-center gap-2">
           <button
             onClick={() => setSelectedCategory('all')}
-            className={`w-full px-4 py-2 text-xs uppercase font-semibold tracking-wider rounded-md transition-all duration-200 ${
+            className={`px-4 py-2 text-xs uppercase font-semibold tracking-wider rounded-md transition-all duration-200 ${
               selectedCategory === 'all'
                 ? 'bg-[#9B1B30] text-[#FFFBF2] shadow-sm'
                 : 'bg-[#FFFBF2]/70 text-[#5A5350] hover:text-[#1E1E1E] hover:bg-[#FFFBF2] border border-[#E5DAC6]'
             }`}
           >
-            Todas
+            Todas ({dishes.length})
           </button>
 
-          {[
-            { label: 'Entrantes', category: 'Entrantes' },
-            { label: 'Platos Fuertes', category: 'Platos Fuertes' },
-            { label: 'Coctelería', category: 'Coctelería' },
-          ].map((item) => (
-            <button
-              key={item.label}
-              onClick={() => setSelectedCategory(item.category)}
-              className={`w-full px-4 py-2 text-xs uppercase font-semibold tracking-wider rounded-md transition-all duration-200 ${
-                selectedCategory === item.category
-                  ? 'bg-[#9B1B30] text-[#FFFBF2] shadow-sm'
-                  : 'bg-[#FFFBF2]/70 text-[#5A5350] hover:text-[#1E1E1E] hover:bg-[#FFFBF2] border border-[#E5DAC6]'
-              }`}
-            >
-              {item.label}
-            </button>
-          ))}
+          {Array.from(new Set(dishes.map((d) => d.category).filter(Boolean))).map((cat) => {
+            const count = dishes.filter((d) => d.category === cat).length;
+            return (
+              <button
+                key={cat}
+                onClick={() => setSelectedCategory(cat)}
+                className={`px-4 py-2 text-xs uppercase font-semibold tracking-wider rounded-md transition-all duration-200 ${
+                  selectedCategory === cat
+                    ? 'bg-[#9B1B30] text-[#FFFBF2] shadow-sm'
+                    : 'bg-[#FFFBF2]/70 text-[#5A5350] hover:text-[#1E1E1E] hover:bg-[#FFFBF2] border border-[#E5DAC6]'
+                }`}
+              >
+                {cat} ({count})
+              </button>
+            );
+          })}
         </div>
       </section>
 
@@ -228,8 +227,13 @@ export const MenuPage: React.FC = () => {
                     </p>
                   </div>
 
-                  <div className="pt-2 border-t border-[#EADFCB]/60 flex items-center justify-between text-xs text-[#8A8380]">
-                    <span className="italic font-serif">Doña Gloria Terraza</span>
+                  <div className="pt-2 border-t border-[#EADFCB]/60 flex items-center justify-between text-xs">
+                    <span className="italic font-serif text-[#8A8380]">Doña Gloria Terraza</span>
+                    {formatDishPrice(dish) && (
+                      <span className="font-serif font-bold text-[#9B1B30] text-sm tracking-wide bg-[#F7F0E3] px-2.5 py-1 rounded border border-[#9B1B30]/20">
+                        {formatDishPrice(dish)}
+                      </span>
+                    )}
                   </div>
                 </div>
               </article>
