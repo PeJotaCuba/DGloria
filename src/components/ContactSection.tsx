@@ -4,10 +4,11 @@
  */
 
 import React, { useState } from 'react';
-import { MapPin, Clock, MessageSquare, Send, Check, QrCode, ExternalLink, Copy } from 'lucide-react';
+import { MapPin, Clock, MessageSquare, Send, Check, QrCode, ExternalLink, Copy, Sun, Moon } from 'lucide-react';
 import { BUSINESS_INFO, WHATSAPP_URL_NUMBER } from '../lib/assets';
 import { useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
+import { groupWeeklySchedule } from '../utils/schedule';
 
 export const ContactSection: React.FC = () => {
   const openingHours = useQuery(api.shift.getPublicOpeningHours, {});
@@ -16,6 +17,8 @@ export const ContactSection: React.FC = () => {
   const [inquiryMsg, setInquiryMsg] = useState('');
   const [sent, setSent] = useState(false);
   const [copied, setCopied] = useState(false);
+
+  const groupedSchedule = groupWeeklySchedule(openingHours?.weeklySchedule || []);
 
   // Determinar la URL pública de producción para el código QR (utilizando window.location.origin o dominio definitivo de Vercel)
   const productionMenuUrl = typeof window !== 'undefined'
@@ -118,28 +121,26 @@ export const ContactSection: React.FC = () => {
                 Atención para almuerzos y servicio continuado de bar y cenas en terraza.
               </p>
             </div>
-            <div className="pt-4 border-t border-[#E9E2D6]/10 space-y-2 max-h-[240px] overflow-y-auto pr-1">
-              {openingHours?.weeklySchedule && openingHours.weeklySchedule.length > 0 ? (
-                openingHours.weeklySchedule.map((day) => (
-                  <div key={day.dayOfWeek} className="py-1.5 border-b border-[#E9E2D6]/5 last:border-0">
-                    <span className="text-[11px] text-[#8A8380] uppercase tracking-wider block font-medium">
-                      {day.dayName}
+            <div className="pt-4 border-t border-[#E9E2D6]/10 space-y-3 max-h-[280px] overflow-y-auto pr-1">
+              {groupedSchedule.length > 0 ? (
+                groupedSchedule.map((group, idx) => (
+                  <div key={idx} className="py-2 border-b border-[#E9E2D6]/10 last:border-0 space-y-1">
+                    <span className="text-xs text-[#E3B87C] font-semibold uppercase tracking-wider block">
+                      {group.dayRangeLabel}
                     </span>
-                    {day.enabled ? (
-                      day.sessions && day.sessions.length > 0 ? (
-                        day.sessions.map((session, idx) => (
-                          <span key={idx} className="text-xs text-[#FFFBF2] font-mono block">
-                            {session.openTimeFormatted} — {session.closeTimeFormatted}
-                          </span>
-                        ))
-                      ) : (
-                        <span className="text-xs text-[#FFFBF2] font-mono block">
-                          {day.openTimeFormatted || "8:00 AM"} — {day.closeTimeFormatted || "11:59 PM"}
-                        </span>
-                      )
+                    {group.enabled && group.sessions.length > 0 ? (
+                      group.sessions.map((session, sIdx) => {
+                        const Icon = sIdx === 0 ? Sun : Moon;
+                        return (
+                          <div key={sIdx} className="flex items-center gap-2 text-xs text-[#FFFBF2] font-mono">
+                            <Icon className={`w-3.5 h-3.5 shrink-0 ${sIdx === 0 ? 'text-amber-400' : 'text-blue-300'}`} />
+                            <span>{session.openTimeFormatted} — {session.closeTimeFormatted}</span>
+                          </div>
+                        );
+                      })
                     ) : (
                       <span className="text-xs text-[#E9E2D6]/60 italic block">
-                        {day.closedReason || "Cerrado por descanso"}
+                        {group.closedReason || 'Cerrado por descanso'}
                       </span>
                     )}
                   </div>

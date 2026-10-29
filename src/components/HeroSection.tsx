@@ -8,10 +8,11 @@ import { ASSETS } from '../lib/assets';
 import { ArrowDown, UtensilsCrossed, Calendar } from 'lucide-react';
 import { useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
+import { formatGroupedScheduleSummary } from '../utils/schedule';
 
 export const HeroSection: React.FC = () => {
   const openingHours = useQuery(api.shift.getPublicOpeningHours, {});
-  const scheduleText = openingHours?.openDaysSummary || "Martes a Domingo: Desde las 11:00 AM";
+  const scheduleText = formatGroupedScheduleSummary(openingHours?.weeklySchedule, openingHours?.openDaysSummary);
 
   return (
     <section

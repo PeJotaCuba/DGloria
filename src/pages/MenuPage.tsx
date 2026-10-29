@@ -4,6 +4,7 @@ import { useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { ConvexDish, formatDishPrice } from '../lib/convexClient';
 import { ASSETS, BUSINESS_INFO, WHATSAPP_URL_NUMBER } from '../lib/assets';
+import { formatGroupedScheduleSummary } from '../utils/schedule';
 
 export const MenuPage: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -11,7 +12,7 @@ export const MenuPage: React.FC = () => {
   // Consulta reactiva en tiempo real a los platos publicados desde Convex
   const publishedDishesQuery = useQuery(api.menuDishes.getPublishedDishes, {});
   const openingHours = useQuery(api.shift.getPublicOpeningHours, {});
-  const scheduleSummaryText = openingHours?.openDaysSummary || "Martes a Domingo: Desde las 11:00 AM";
+  const scheduleSummaryText = formatGroupedScheduleSummary(openingHours?.weeklySchedule, openingHours?.openDaysSummary);
 
   useEffect(() => {
     // Desplazar al inicio al cargar la página
