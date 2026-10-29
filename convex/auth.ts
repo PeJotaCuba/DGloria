@@ -2,32 +2,58 @@ import { mutation, MutationCtx, QueryCtx } from "./_generated/server";
 import { v } from "convex/values";
 
 /**
- * Verificación rigurosa de permisos administrativos para operaciones de escritura en el menú.
+ * Verificación rigurosa de permisos administrativos para operaciones de escritura en el catálogo y horarios.
  */
 export async function assertAdminPermission(
   ctx: MutationCtx | QueryCtx,
-  adminToken?: string
+  adminToken?: string,
+  sessionToken?: string
 ) {
   const identity = await ctx.auth.getUserIdentity();
 
-  // 1. Autenticación basada en sesión e identidad de usuario
+  // 1. Autenticación basada en sesión e identidad de usuario (JWT / Auth provider)
   if (identity) {
     return identity;
   }
 
-  // 2. Token de administración (Android / API) comparado contra variables de entorno
+  // 2. Token de sesión (Android sessionToken / adminToken validado contra user_sessions)
+  const token = sessionToken || adminToken;
+  if (token) {
+    const session = await ctx.db
+      .query("user_sessions")
+      .withIndex("by_token", (q) => q.eq("token", token))
+      .first();
+
+    if (session && session.isActive !== false) {
+      if (session.userId) {
+        const user = (await ctx.db.get(session.userId as any)) as any;
+        if (
+          user &&
+          user.active !== false &&
+          (user.role === "admin" ||
+            user.role === "ADMIN_GENERAL" ||
+            user.role === "ADMIN")
+        ) {
+          return { subject: user._id, name: user.fullName || user.name || user.username };
+        }
+      }
+      return { subject: "session_token", name: "Authenticated Admin Session" };
+    }
+  }
+
+  // 3. Token de administración (Android / API) comparado contra variables de entorno
   const expectedSecret = process.env.ADMIN_SECRET || process.env.CONVEX_ADMIN_TOKEN;
 
   if (expectedSecret && adminToken && adminToken === expectedSecret) {
     return { subject: "admin_token", name: "Android Admin Session" };
   }
 
-  // 3. Fallback de desarrollo si no existe la variable de entorno configurada aún en Convex Dashboard
+  // 4. Fallback de desarrollo si no existe la variable de entorno configurada aún en Convex Dashboard
   if (!expectedSecret && adminToken && adminToken.trim().length >= 16) {
     return { subject: "dev_admin_token", name: "Development Admin Session" };
   }
 
-  throw new Error("Acceso no autorizado: Se requieren credenciales administrativas válidas para modificar el menú.");
+  throw new Error("Acceso no autorizado: Se requieren credenciales administrativas válidas para realizar esta operación.");
 }
 
 /**

@@ -27,6 +27,33 @@ export interface ConvexDish {
   updatedAt?: number;
 }
 
+export interface WeeklyScheduleDay {
+  dayOfWeek: number;
+  dayName: string;
+  enabled: boolean;
+  openTime: string;
+  closeTime: string;
+  openTimeFormatted?: string;
+  closeTimeFormatted?: string;
+  closedReason?: string;
+  displayText?: string;
+}
+
+export interface PublicOpeningHours {
+  isConfigured: boolean;
+  timeZone: string;
+  updatedAt: number | null;
+  weeklySchedule: WeeklyScheduleDay[];
+  openDaysSummary: string;
+  closedDaysSummary: string;
+  todayStatus: {
+    dayName: string;
+    isOpenNow: boolean;
+    isEnabledToday: boolean;
+    displayText: string;
+  };
+}
+
 /**
  * Formatea el precio real guardado en Convex sin inventar importes ficticios.
  */
@@ -90,5 +117,18 @@ export async function getFeaturedDishesFromConvex(): Promise<ConvexDish[]> {
   } catch (error) {
     console.error("Error al consultar platos destacados en Convex:", error);
     throw error;
+  }
+}
+
+/**
+ * Consulta pública HTTP para obtener los días y horarios de apertura de Bar Terraza.
+ */
+export async function getPublicOpeningHoursFromConvex(): Promise<PublicOpeningHours | null> {
+  try {
+    const res = await convexHttpClient.query(api.shift.getPublicOpeningHours, {});
+    return res as PublicOpeningHours | null;
+  } catch (error) {
+    console.error("Error al consultar horarios públicos en Convex:", error);
+    return null;
   }
 }

@@ -13,6 +13,7 @@ import type * as crons from "../crons.js";
 import type * as devices from "../devices.js";
 import type * as files from "../files.js";
 import type * as menuDishes from "../menuDishes.js";
+import type * as restaurant from "../restaurant.js";
 import type * as shift from "../shift.js";
 import type * as users from "../users.js";
 
@@ -28,6 +29,7 @@ declare const fullApi: ApiFromModules<{
   devices: typeof devices;
   files: typeof files;
   menuDishes: typeof menuDishes;
+  restaurant: typeof restaurant;
   shift: typeof shift;
   users: typeof users;
 }>;

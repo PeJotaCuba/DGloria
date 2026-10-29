@@ -1,8 +1,28 @@
 import { mutation, query, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
+import { assertAdminPermission } from "./auth";
 
 /**
- * Obtiene la configuración de horarios de turnos programados.
+ * Formatea una hora en formato "HH:mm" al formato amigable "H:MM AM/PM".
+ */
+function formatTimeStr(time?: string): string {
+  if (!time) return "";
+  const trimmed = time.trim();
+  if (trimmed.toUpperCase().includes("AM") || trimmed.toUpperCase().includes("PM")) {
+    return trimmed;
+  }
+  const [hourStr, minuteStr] = trimmed.split(":");
+  const hour = parseInt(hourStr, 10);
+  if (isNaN(hour)) return trimmed;
+  const minute = minuteStr ? minuteStr.padStart(2, "0") : "00";
+  const period = hour >= 12 ? "PM" : "AM";
+  const formattedHour = hour % 12 === 0 ? 12 : hour % 12;
+  return `${formattedHour}:${minute} ${period}`;
+}
+
+/**
+ * Obtiene la configuración completa de horarios de apertura y turnos (para administración Android).
+ * Si no existe una configuración guardada en la base de datos, retorna null sin inventar valores ficticios.
  */
 export const getSchedule = query({
   args: {},
@@ -11,26 +31,118 @@ export const getSchedule = query({
     if (schedules.length > 0) {
       return schedules[0];
     }
+    return null;
+  },
+});
+
+/**
+ * Consulta pública para la web: Retorna únicamente la información de días y horarios de apertura
+ * compartida de Bar Terraza, sin exponer datos internos de auditoría, sesiones ni turnos.
+ */
+export const getPublicOpeningHours = query({
+  args: {},
+  handler: async (ctx) => {
+    const schedules = await ctx.db.query("shift_schedules").collect();
+    if (schedules.length === 0) {
+      return null;
+    }
+
+    const schedule = schedules[0];
+    const weeklySchedule: any[] = (schedule as any).weeklySchedule || [];
+    const timeZone: string = (schedule as any).timeZone || "America/Havana";
+
+    // Calcular estado actual en la zona horaria del establecimiento
+    const now = new Date();
+    const dayFormatter = new Intl.DateTimeFormat("en-US", { timeZone, weekday: "short" });
+    const dayStr = dayFormatter.format(now);
+    const dayMap: Record<string, number> = {
+      Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6, Sun: 7,
+    };
+    const currentDayOfWeek = dayMap[dayStr] || 1;
+
+    const timeFormatter = new Intl.DateTimeFormat("en-US", {
+      timeZone,
+      hour: "numeric",
+      minute: "numeric",
+      hour12: false,
+    });
+    const parts = timeFormatter.formatToParts(now);
+    const currentHour = parts.find((p) => p.type === "hour")?.value || "00";
+    const currentMin = parts.find((p) => p.type === "minute")?.value || "00";
+    const currentHourMin = `${currentHour.padStart(2, "0")}:${currentMin.padStart(2, "0")}`;
+
+    const formattedDays = weeklySchedule.map((day) => {
+      const openFormatted = formatTimeStr(day.openTime);
+      const closeFormatted = formatTimeStr(day.closeTime);
+      return {
+        dayOfWeek: day.dayOfWeek,
+        dayName: day.dayName,
+        enabled: Boolean(day.enabled),
+        openTime: day.openTime,
+        closeTime: day.closeTime,
+        openTimeFormatted: openFormatted,
+        closeTimeFormatted: closeFormatted,
+        closedReason: day.enabled ? undefined : (day.closedReason || "Cerrado por descanso"),
+        displayText: day.enabled ? `${openFormatted} — ${closeFormatted}` : (day.closedReason || "Cerrado"),
+      };
+    });
+
+    const todayConfig = formattedDays.find((d) => d.dayOfWeek === currentDayOfWeek);
+    const isTodayOpen = Boolean(
+      todayConfig?.enabled &&
+      currentHourMin >= todayConfig.openTime &&
+      currentHourMin <= todayConfig.closeTime
+    );
+
+    // Días abiertos y cerrados para resúmenes visuales en la portada y el menú
+    const openDays = formattedDays.filter((d) => d.enabled);
+    const closedDays = formattedDays.filter((d) => !d.enabled);
+
+    let openDaysSummary = "";
+    if (openDays.length > 0) {
+      const firstOpen = openDays[0];
+      const lastOpen = openDays[openDays.length - 1];
+      const openTimeSample = firstOpen.openTimeFormatted || "11:00 AM";
+      if (openDays.length === 6 && closedDays.length === 1 && closedDays[0].dayOfWeek === 1) {
+        openDaysSummary = `Mar - Dom: Desde las ${openTimeSample}`;
+      } else {
+        openDaysSummary = `${firstOpen.dayName} a ${lastOpen.dayName}: Desde las ${openTimeSample}`;
+      }
+    }
+
+    const closedDaysSummary = closedDays.length > 0
+      ? closedDays.map((d) => `${d.dayName}: ${d.closedReason || "Cerrado por descanso"}`).join(", ")
+      : "";
 
     return {
-      id: "default",
-      timeZone: "America/Havana",
-      weeklySchedule: [
-        { dayOfWeek: 1, dayName: "Lunes", enabled: false, openTime: "08:00", closeTime: "23:59" },
-        { dayOfWeek: 2, dayName: "Martes", enabled: true, openTime: "08:00", closeTime: "23:59" },
-        { dayOfWeek: 3, dayName: "Miércoles", enabled: true, openTime: "08:00", closeTime: "23:59" },
-        { dayOfWeek: 4, dayName: "Jueves", enabled: true, openTime: "08:00", closeTime: "23:59" },
-        { dayOfWeek: 5, dayName: "Viernes", enabled: true, openTime: "08:00", closeTime: "23:59" },
-        { dayOfWeek: 6, dayName: "Sábado", enabled: true, openTime: "08:00", closeTime: "23:59" },
-        { dayOfWeek: 7, dayName: "Domingo", enabled: true, openTime: "08:00", closeTime: "23:59" },
-      ],
-      manualOverride: null,
+      isConfigured: true,
+      timeZone,
+      updatedAt: (schedule as any).updatedAt || null,
+      weeklySchedule: formattedDays,
+      openDaysSummary,
+      closedDaysSummary,
+      todayStatus: {
+        dayName: todayConfig?.dayName || "Hoy",
+        isOpenNow: isTodayOpen,
+        isEnabledToday: Boolean(todayConfig?.enabled),
+        displayText: isTodayOpen
+          ? `Abierto hoy hasta ${todayConfig?.closeTimeFormatted}`
+          : todayConfig?.enabled
+          ? `Abre hoy a las ${todayConfig?.openTimeFormatted}`
+          : "Cerrado hoy por descanso",
+      },
     };
   },
 });
 
 /**
- * Actualiza la programación semanal de turnos.
+ * Alias de consulta de horarios públicos.
+ */
+export const getOpeningHours = getPublicOpeningHours;
+
+/**
+ * Actualiza la programación semanal de horarios y turnos de Bar Terraza.
+ * Protegida con autenticación y validación de permisos administrativos (Android / Web Admin).
  */
 export const updateSchedule = mutation({
   args: {
@@ -41,13 +153,18 @@ export const updateSchedule = mutation({
         enabled: v.boolean(),
         openTime: v.string(),
         closeTime: v.string(),
+        closedReason: v.optional(v.string()),
       })
     ),
     timeZone: v.optional(v.string()),
     userId: v.optional(v.string()),
     sessionToken: v.optional(v.string()),
+    adminToken: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    // 1. Autorización administrativa obligatoria
+    await assertAdminPermission(ctx, args.adminToken, args.sessionToken);
+
     const schedules = await ctx.db.query("shift_schedules").collect();
     const now = Date.now();
     const timeZone = args.timeZone || "America/Havana";
@@ -74,6 +191,11 @@ export const updateSchedule = mutation({
     }
   },
 });
+
+/**
+ * Alias de mutación administrativa para guardar horarios de apertura.
+ */
+export const updateOpeningHours = updateSchedule;
 
 /**
  * Apertura manual de turno desde Android o administración.
