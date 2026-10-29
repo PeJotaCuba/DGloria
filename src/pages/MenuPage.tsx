@@ -10,6 +10,8 @@ export const MenuPage: React.FC = () => {
 
   // Consulta reactiva en tiempo real a los platos publicados desde Convex
   const publishedDishesQuery = useQuery(api.menuDishes.getPublishedDishes, {});
+  const openingHours = useQuery(api.shift.getPublicOpeningHours, {});
+  const scheduleSummaryText = openingHours?.openDaysSummary || "Martes a Domingo: Desde las 11:00 AM";
 
   useEffect(() => {
     // Desplazar al inicio al cargar la página
@@ -93,7 +95,7 @@ export const MenuPage: React.FC = () => {
             </div>
             <div className="flex items-center gap-1.5">
               <Clock className="w-3.5 h-3.5 text-[#9B1B30]" />
-              <span>Mar - Dom: Desde las 11:00 AM</span>
+              <span>{scheduleSummaryText}</span>
             </div>
           </div>
         </div>

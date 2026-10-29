@@ -6,8 +6,11 @@
 import React, { useState } from 'react';
 import { MapPin, Clock, MessageSquare, Send, Check, QrCode, ExternalLink, Copy } from 'lucide-react';
 import { BUSINESS_INFO, WHATSAPP_URL_NUMBER } from '../lib/assets';
+import { useQuery } from 'convex/react';
+import { api } from '../../convex/_generated/api';
 
 export const ContactSection: React.FC = () => {
+  const openingHours = useQuery(api.shift.getPublicOpeningHours, {});
   const [inquiryName, setInquiryName] = useState('');
   const [inquirySubject, setInquirySubject] = useState('');
   const [inquiryMsg, setInquiryMsg] = useState('');
@@ -115,34 +118,37 @@ export const ContactSection: React.FC = () => {
                 Atención para almuerzos y servicio continuado de bar y cenas en terraza.
               </p>
             </div>
-            <div className="pt-4 border-t border-[#E9E2D6]/10 space-y-2.5">
-              <div>
-                <span className="text-[11px] text-[#8A8380] uppercase tracking-wider block">
-                  Martes a Viernes
-                </span>
-                <span className="text-xs text-[#FFFBF2] font-mono block">
-                  11:00 AM — 3:00 PM
-                </span>
-                <span className="text-xs text-[#FFFBF2] font-mono block">
-                  6:00 PM — 12:00 AM
-                </span>
-              </div>
-              <div>
-                <span className="text-[11px] text-[#8A8380] uppercase tracking-wider block">
-                  Sábados y Domingos
-                </span>
-                <span className="text-xs text-[#FFFBF2] font-mono block">
-                  11:00 AM — 3:00 PM
-                </span>
-                <span className="text-xs text-[#FFFBF2] font-mono block">
-                  6:00 PM — 2:00 AM
-                </span>
-              </div>
-              <div className="pt-1 border-t border-[#E9E2D6]/5">
-                <span className="text-[11px] text-[#8A8380] italic">
-                  Lunes: Cerrado por descanso
-                </span>
-              </div>
+            <div className="pt-4 border-t border-[#E9E2D6]/10 space-y-2 max-h-[240px] overflow-y-auto pr-1">
+              {openingHours?.weeklySchedule && openingHours.weeklySchedule.length > 0 ? (
+                openingHours.weeklySchedule.map((day) => (
+                  <div key={day.dayOfWeek} className="py-1.5 border-b border-[#E9E2D6]/5 last:border-0">
+                    <span className="text-[11px] text-[#8A8380] uppercase tracking-wider block font-medium">
+                      {day.dayName}
+                    </span>
+                    {day.enabled ? (
+                      day.sessions && day.sessions.length > 0 ? (
+                        day.sessions.map((session, idx) => (
+                          <span key={idx} className="text-xs text-[#FFFBF2] font-mono block">
+                            {session.openTimeFormatted} — {session.closeTimeFormatted}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="text-xs text-[#FFFBF2] font-mono block">
+                          {day.openTimeFormatted || "8:00 AM"} — {day.closeTimeFormatted || "11:59 PM"}
+                        </span>
+                      )
+                    ) : (
+                      <span className="text-xs text-[#E9E2D6]/60 italic block">
+                        {day.closedReason || "Cerrado por descanso"}
+                      </span>
+                    )}
+                  </div>
+                ))
+              ) : (
+                <div className="text-xs text-[#E9E2D6]/70 py-2">
+                  Cargando programación oficial...
+                </div>
+              )}
             </div>
           </div>
 

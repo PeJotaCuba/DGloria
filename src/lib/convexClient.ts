@@ -27,12 +27,20 @@ export interface ConvexDish {
   updatedAt?: number;
 }
 
+export interface ScheduleSession {
+  openTime: string;
+  closeTime: string;
+  openTimeFormatted: string;
+  closeTimeFormatted: string;
+}
+
 export interface WeeklyScheduleDay {
   dayOfWeek: number;
   dayName: string;
   enabled: boolean;
-  openTime: string;
-  closeTime: string;
+  sessions: ScheduleSession[];
+  openTime?: string;
+  closeTime?: string;
   openTimeFormatted?: string;
   closeTimeFormatted?: string;
   closedReason?: string;

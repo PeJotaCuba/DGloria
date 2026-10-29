@@ -72,26 +72,61 @@ export const getPublicOpeningHours = query({
     const currentHourMin = `${currentHour.padStart(2, "0")}:${currentMin.padStart(2, "0")}`;
 
     const formattedDays = weeklySchedule.map((day) => {
-      const openFormatted = formatTimeStr(day.openTime);
-      const closeFormatted = formatTimeStr(day.closeTime);
+      const enabled = Boolean(day.enabled);
+      const sessions: any[] = [];
+
+      if (day.openTime && day.closeTime) {
+        sessions.push({
+          openTime: day.openTime,
+          closeTime: day.closeTime,
+          openTimeFormatted: formatTimeStr(day.openTime),
+          closeTimeFormatted: formatTimeStr(day.closeTime),
+        });
+      }
+      if (day.openTime2 && day.closeTime2) {
+        sessions.push({
+          openTime: day.openTime2,
+          closeTime: day.closeTime2,
+          openTimeFormatted: formatTimeStr(day.openTime2),
+          closeTimeFormatted: formatTimeStr(day.closeTime2),
+        });
+      } else if (Array.isArray(day.sessions) && day.sessions.length > 0) {
+        day.sessions.forEach((s: any) => {
+          if (s.openTime && s.closeTime) {
+            sessions.push({
+              openTime: s.openTime,
+              closeTime: s.closeTime,
+              openTimeFormatted: formatTimeStr(s.openTime),
+              closeTimeFormatted: formatTimeStr(s.closeTime),
+            });
+          }
+        });
+      }
+
+      const displayText = !enabled
+        ? (day.closedReason || "Cerrado por descanso")
+        : sessions.length > 0
+        ? sessions.map((s) => `${s.openTimeFormatted} — ${s.closeTimeFormatted}`).join(" y ")
+        : "Horario no especificado";
+
       return {
         dayOfWeek: day.dayOfWeek,
         dayName: day.dayName,
-        enabled: Boolean(day.enabled),
-        openTime: day.openTime,
-        closeTime: day.closeTime,
-        openTimeFormatted: openFormatted,
-        closeTimeFormatted: closeFormatted,
-        closedReason: day.enabled ? undefined : (day.closedReason || "Cerrado por descanso"),
-        displayText: day.enabled ? `${openFormatted} — ${closeFormatted}` : (day.closedReason || "Cerrado"),
+        enabled,
+        sessions,
+        openTime: day.openTime || sessions[0]?.openTime || "",
+        closeTime: day.closeTime || sessions[0]?.closeTime || "",
+        openTimeFormatted: sessions[0]?.openTimeFormatted || formatTimeStr(day.openTime),
+        closeTimeFormatted: sessions[0]?.closeTimeFormatted || formatTimeStr(day.closeTime),
+        closedReason: enabled ? undefined : (day.closedReason || "Cerrado por descanso"),
+        displayText,
       };
     });
 
     const todayConfig = formattedDays.find((d) => d.dayOfWeek === currentDayOfWeek);
     const isTodayOpen = Boolean(
       todayConfig?.enabled &&
-      currentHourMin >= todayConfig.openTime &&
-      currentHourMin <= todayConfig.closeTime
+      todayConfig.sessions.some((s: any) => currentHourMin >= s.openTime && currentHourMin <= s.closeTime)
     );
 
     // Días abiertos y cerrados para resúmenes visuales en la portada y el menú
@@ -102,9 +137,11 @@ export const getPublicOpeningHours = query({
     if (openDays.length > 0) {
       const firstOpen = openDays[0];
       const lastOpen = openDays[openDays.length - 1];
-      const openTimeSample = firstOpen.openTimeFormatted || "11:00 AM";
+      const openTimeSample = firstOpen.sessions[0]?.openTimeFormatted || "11:00 AM";
       if (openDays.length === 6 && closedDays.length === 1 && closedDays[0].dayOfWeek === 1) {
-        openDaysSummary = `Mar - Dom: Desde las ${openTimeSample}`;
+        openDaysSummary = `Martes a Domingo: Desde las ${openTimeSample}`;
+      } else if (openDays.length === 7) {
+        openDaysSummary = `Lunes a Domingo: Desde las ${openTimeSample}`;
       } else {
         openDaysSummary = `${firstOpen.dayName} a ${lastOpen.dayName}: Desde las ${openTimeSample}`;
       }
@@ -151,8 +188,14 @@ export const updateSchedule = mutation({
         dayOfWeek: v.number(),
         dayName: v.string(),
         enabled: v.boolean(),
-        openTime: v.string(),
-        closeTime: v.string(),
+        openTime: v.optional(v.string()),
+        closeTime: v.optional(v.string()),
+        openTime2: v.optional(v.string()),
+        closeTime2: v.optional(v.string()),
+        sessions: v.optional(v.array(v.object({
+          openTime: v.string(),
+          closeTime: v.string(),
+        }))),
         closedReason: v.optional(v.string()),
       })
     ),

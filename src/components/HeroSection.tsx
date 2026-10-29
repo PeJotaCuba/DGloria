@@ -6,8 +6,13 @@
 import React from 'react';
 import { ASSETS } from '../lib/assets';
 import { ArrowDown, UtensilsCrossed, Calendar } from 'lucide-react';
+import { useQuery } from 'convex/react';
+import { api } from '../../convex/_generated/api';
 
 export const HeroSection: React.FC = () => {
+  const openingHours = useQuery(api.shift.getPublicOpeningHours, {});
+  const scheduleText = openingHours?.openDaysSummary || "Martes a Domingo: Desde las 11:00 AM";
+
   return (
     <section
       id="inicio"
@@ -79,7 +84,7 @@ export const HeroSection: React.FC = () => {
           </div>
           <div className="col-span-2 sm:col-span-1">
             <span className="block font-serif text-xl sm:text-2xl font-bold text-[#FFFBF2]">Horario</span>
-            <span className="text-xs text-[#8A8380] uppercase tracking-wider">Mar a Dom desde 11:00 AM</span>
+            <span className="text-xs text-[#8A8380] uppercase tracking-wider">{scheduleText}</span>
           </div>
         </div>
       </div>
