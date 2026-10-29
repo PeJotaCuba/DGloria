@@ -5,14 +5,14 @@
 
 import React from 'react';
 import { ASSETS } from '../lib/assets';
-import { ArrowDown, UtensilsCrossed, Calendar } from 'lucide-react';
+import { ArrowDown, UtensilsCrossed, Calendar, Sun, Moon } from 'lucide-react';
 import { useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
-import { formatGroupedScheduleSummary } from '../utils/schedule';
+import { groupWeeklyScheduleStrict } from '../utils/schedule';
 
 export const HeroSection: React.FC = () => {
   const openingHours = useQuery(api.shift.getPublicOpeningHours, {});
-  const scheduleText = formatGroupedScheduleSummary(openingHours?.weeklySchedule, openingHours?.openDaysSummary);
+  const groupedSchedule = groupWeeklyScheduleStrict(openingHours?.weeklySchedule || []);
 
   return (
     <section
@@ -74,18 +74,49 @@ export const HeroSection: React.FC = () => {
         </div>
 
         {/* Verified Attributes Strip */}
-        <div className="mt-14 pt-8 border-t border-[#E9E2D6]/15 grid grid-cols-2 sm:grid-cols-3 gap-6 sm:gap-12 text-center w-full max-w-2xl">
+        <div className="mt-14 pt-8 border-t border-[#E9E2D6]/15 grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-8 text-center w-full max-w-3xl">
           <div>
-            <span className="block font-serif text-xl sm:text-2xl font-bold text-[#FFFBF2]">Ubicación</span>
+            <span className="block font-serif text-lg sm:text-xl font-bold text-[#FFFBF2] mb-1">Ubicación</span>
             <span className="text-xs text-[#8A8380] uppercase tracking-wider">José A. Saco esq. Zenea</span>
           </div>
           <div>
-            <span className="block font-serif text-xl sm:text-2xl font-bold text-[#FFFBF2]">Ambiente</span>
+            <span className="block font-serif text-lg sm:text-xl font-bold text-[#FFFBF2] mb-1">Ambiente</span>
             <span className="text-xs text-[#8A8380] uppercase tracking-wider">Terraza al Aire Libre</span>
           </div>
-          <div className="col-span-2 sm:col-span-1">
-            <span className="block font-serif text-xl sm:text-2xl font-bold text-[#FFFBF2]">Horario</span>
-            <span className="text-xs text-[#8A8380] uppercase tracking-wider">{scheduleText}</span>
+          <div>
+            <span className="block font-serif text-lg sm:text-xl font-bold text-[#FFFBF2] mb-2">Horario</span>
+            {groupedSchedule.length > 0 ? (
+              <div className="space-y-3">
+                {groupedSchedule.map((group, gIdx) => (
+                  <div key={gIdx} className="space-y-1">
+                    <span className="block text-xs font-semibold text-[#E3B87C]">
+                      {group.dayRangeLabel}
+                    </span>
+                    {group.enabled && group.sessions.length > 0 ? (
+                      <div className="space-y-0.5">
+                        {group.sessions.map((session, sIdx) => {
+                          const Icon = sIdx === 0 ? Sun : Moon;
+                          return (
+                            <div key={sIdx} className="inline-flex items-center justify-center gap-1.5 text-xs text-[#E9E2D6] font-mono block">
+                              <Icon className={`w-3.5 h-3.5 shrink-0 ${sIdx === 0 ? 'text-amber-400' : 'text-blue-300'}`} />
+                              <span>{session.openTimeFormatted} – {session.closeTimeFormatted}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <span className="text-xs text-[#8A8380] italic block">
+                        {group.closedReason || 'Cerrado por descanso'}
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <span className="text-xs text-[#8A8380] uppercase tracking-wider block">
+                Martes a domingo
+              </span>
+            )}
           </div>
         </div>
       </div>

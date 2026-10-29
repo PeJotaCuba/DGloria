@@ -8,7 +8,7 @@ import { MapPin, Clock, MessageSquare, Send, Check, QrCode, ExternalLink, Copy, 
 import { BUSINESS_INFO, WHATSAPP_URL_NUMBER } from '../lib/assets';
 import { useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
-import { groupWeeklySchedule } from '../utils/schedule';
+import { groupWeeklyScheduleStrict } from '../utils/schedule';
 
 export const ContactSection: React.FC = () => {
   const openingHours = useQuery(api.shift.getPublicOpeningHours, {});
@@ -18,7 +18,7 @@ export const ContactSection: React.FC = () => {
   const [sent, setSent] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  const groupedSchedule = groupWeeklySchedule(openingHours?.weeklySchedule || []);
+  const groupedSchedule = groupWeeklyScheduleStrict(openingHours?.weeklySchedule || []);
 
   // Determinar la URL pública de producción para el código QR (utilizando window.location.origin o dominio definitivo de Vercel)
   const productionMenuUrl = typeof window !== 'undefined'
@@ -114,32 +114,37 @@ export const ContactSection: React.FC = () => {
               <div className="w-12 h-12 rounded bg-[#9B1B30]/15 border border-[#9B1B30]/30 text-[#9B1B30] flex items-center justify-center mb-6">
                 <Clock className="w-6 h-6" />
               </div>
+              <span className="text-[11px] font-semibold tracking-widest uppercase text-[#E3B87C] block mb-1">
+                Horario de Apertura
+              </span>
               <h3 className="font-serif text-lg font-bold text-[#FFFBF2] mb-2">
-                Horarios de Apertura
+                Atención en Bar & Terraza
               </h3>
               <p className="text-xs text-[#E9E2D6]/80 font-light leading-relaxed mb-4">
                 Atención para almuerzos y servicio continuado de bar y cenas en terraza.
               </p>
             </div>
-            <div className="pt-4 border-t border-[#E9E2D6]/10 space-y-3 max-h-[280px] overflow-y-auto pr-1">
+            <div className="pt-4 border-t border-[#E9E2D6]/10 space-y-4 max-h-[300px] overflow-y-auto pr-1">
               {groupedSchedule.length > 0 ? (
                 groupedSchedule.map((group, idx) => (
-                  <div key={idx} className="py-2 border-b border-[#E9E2D6]/10 last:border-0 space-y-1">
-                    <span className="text-xs text-[#E3B87C] font-semibold uppercase tracking-wider block">
+                  <div key={idx} className="pb-3 border-b border-[#E9E2D6]/10 last:border-0 last:pb-0 space-y-2">
+                    <span className="text-sm font-semibold text-[#FFFBF2] block font-sans">
                       {group.dayRangeLabel}
                     </span>
                     {group.enabled && group.sessions.length > 0 ? (
-                      group.sessions.map((session, sIdx) => {
-                        const Icon = sIdx === 0 ? Sun : Moon;
-                        return (
-                          <div key={sIdx} className="flex items-center gap-2 text-xs text-[#FFFBF2] font-mono">
-                            <Icon className={`w-3.5 h-3.5 shrink-0 ${sIdx === 0 ? 'text-amber-400' : 'text-blue-300'}`} />
-                            <span>{session.openTimeFormatted} — {session.closeTimeFormatted}</span>
-                          </div>
-                        );
-                      })
+                      <div className="space-y-1.5 pl-0.5">
+                        {group.sessions.map((session, sIdx) => {
+                          const Icon = sIdx === 0 ? Sun : Moon;
+                          return (
+                            <div key={sIdx} className="flex items-center gap-2.5 text-xs text-[#E9E2D6] font-mono">
+                              <Icon className={`w-4 h-4 shrink-0 ${sIdx === 0 ? 'text-amber-400' : 'text-blue-300'}`} />
+                              <span>{session.openTimeFormatted} – {session.closeTimeFormatted}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
                     ) : (
-                      <span className="text-xs text-[#E9E2D6]/60 italic block">
+                      <span className="text-xs text-[#E9E2D6]/60 italic block pl-0.5">
                         {group.closedReason || 'Cerrado por descanso'}
                       </span>
                     )}

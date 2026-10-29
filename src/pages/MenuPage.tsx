@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { ArrowLeft, RefreshCw, Utensils, Phone, Clock, MapPin, Sparkles } from 'lucide-react';
+import { ArrowLeft, RefreshCw, Utensils, Phone, Clock, MapPin, Sparkles, Sun, Moon } from 'lucide-react';
 import { useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { ConvexDish, formatDishPrice } from '../lib/convexClient';
 import { ASSETS, BUSINESS_INFO, WHATSAPP_URL_NUMBER } from '../lib/assets';
-import { formatGroupedScheduleSummary } from '../utils/schedule';
+import { groupWeeklyScheduleStrict } from '../utils/schedule';
 
 export const MenuPage: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -12,7 +12,7 @@ export const MenuPage: React.FC = () => {
   // Consulta reactiva en tiempo real a los platos publicados desde Convex
   const publishedDishesQuery = useQuery(api.menuDishes.getPublishedDishes, {});
   const openingHours = useQuery(api.shift.getPublicOpeningHours, {});
-  const scheduleSummaryText = formatGroupedScheduleSummary(openingHours?.weeklySchedule, openingHours?.openDaysSummary);
+  const groupedSchedule = groupWeeklyScheduleStrict(openingHours?.weeklySchedule || []);
 
   useEffect(() => {
     // Desplazar al inicio al cargar la página
@@ -89,15 +89,40 @@ export const MenuPage: React.FC = () => {
             Preparadas al momento en la terraza gastronómica de Bayamo.
           </p>
 
-          <div className="pt-2 flex flex-wrap items-center justify-center gap-6 text-xs text-[#E9E2D6]/70">
+          <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-6 text-xs text-[#E9E2D6]/80">
             <div className="flex items-center gap-1.5">
               <MapPin className="w-3.5 h-3.5 text-[#9B1B30]" />
               <span>{BUSINESS_INFO.address}</span>
             </div>
-            <div className="flex items-center gap-1.5">
-              <Clock className="w-3.5 h-3.5 text-[#9B1B30]" />
-              <span>{scheduleSummaryText}</span>
-            </div>
+            {groupedSchedule.length > 0 && (
+              <div className="flex items-start gap-2 text-left bg-[#2A2A2A]/60 px-4 py-2 rounded-lg border border-[#333]">
+                <Clock className="w-3.5 h-3.5 text-[#E3B87C] mt-0.5 shrink-0" />
+                <div className="space-y-1.5">
+                  {groupedSchedule.map((group, idx) => (
+                    <div key={idx} className="space-y-0.5">
+                      <span className="block text-[11px] font-semibold text-[#E3B87C]">
+                        {group.dayRangeLabel}
+                      </span>
+                      {group.enabled && group.sessions.length > 0 ? (
+                        group.sessions.map((session, sIdx) => {
+                          const Icon = sIdx === 0 ? Sun : Moon;
+                          return (
+                            <div key={sIdx} className="flex items-center gap-1.5 text-[11px] font-mono text-[#FFFBF2]">
+                              <Icon className={`w-3 h-3 shrink-0 ${sIdx === 0 ? 'text-amber-400' : 'text-blue-300'}`} />
+                              <span>{session.openTimeFormatted} – {session.closeTimeFormatted}</span>
+                            </div>
+                          );
+                        })
+                      ) : (
+                        <span className="text-[11px] text-[#8A8380] italic block">
+                          {group.closedReason || 'Cerrado por descanso'}
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </section>

@@ -14,11 +14,16 @@ export interface DayScheduleRecord {
   dayOfWeek: number; // 1 = Lunes, ..., 7 = Domingo
   dayName: string;
   enabled: boolean;
-  sessions?: SessionInfo[];
+  session1OpenTime?: string;
+  session1CloseTime?: string;
+  session2Enabled?: boolean;
+  session2OpenTime?: string;
+  session2CloseTime?: string;
   openTime?: string;
   closeTime?: string;
-  openTimeFormatted?: string;
-  closeTimeFormatted?: string;
+  openTime2?: string;
+  closeTime2?: string;
+  sessions?: SessionInfo[];
   closedReason?: string;
   displayText?: string;
 }
@@ -32,14 +37,15 @@ export interface DayScheduleGroup {
 }
 
 /**
- * Formatea cadenas de tiempo HH:mm o ya formateadas a formato 12 horas en español (ej. "11:00 a. m.").
+ * Formatea cadenas de tiempo HH:mm a 12 horas en español con 'a. m.' y 'p. m.'.
+ * Maneja correctamente '00:00' -> '12:00 a. m.' y '02:00' -> '2:00 a. m.'.
  */
 export function formatTime12h(timeStr?: string): string {
   if (!timeStr) return '';
   const trimmed = timeStr.trim();
   if (!trimmed) return '';
 
-  // Si ya tiene sufijo AM/PM o a. m. / p. m.
+  // Si ya contiene la notación AM/PM
   if (/am|pm|a\.\s*m\.|p\.\s*m\./i.test(trimmed)) {
     return trimmed
       .replace(/AM/g, 'a. m.')
@@ -48,46 +54,65 @@ export function formatTime12h(timeStr?: string): string {
       .replace(/p\.m\./gi, 'p. m.');
   }
 
-  const [hourStr, minuteStr] = trimmed.split(':');
-  const hour = parseInt(hourStr, 10);
+  const parts = trimmed.split(':');
+  const hour = parseInt(parts[0], 10);
   if (isNaN(hour)) return trimmed;
 
-  const minute = minuteStr ? minuteStr.padStart(2, '0') : '00';
-  const period = hour >= 12 ? 'p. m.' : 'a. m.';
+  const minuteStr = parts[1] ? parts[1].padStart(2, '0') : '00';
+  const period = hour >= 12 && hour < 24 ? 'p. m.' : 'a. m.';
   const formattedHour = hour % 12 === 0 ? 12 : hour % 12;
 
-  return `${formattedHour}:${minute} ${period}`;
+  return `${formattedHour}:${minuteStr} ${period}`;
 }
 
 /**
- * Normaliza y extrae las sesiones de un registro diario.
+ * Extrae estrictamente la primera y segunda sesión de un registro de día de Convex.
+ * NUNCA fusiona ambas sesiones en una sola.
  */
-export function getNormalizedSessions(day: DayScheduleRecord): SessionInfo[] {
-  if (Array.isArray(day.sessions) && day.sessions.length > 0) {
-    return day.sessions.map((s) => ({
-      openTime: s.openTime || '',
-      closeTime: s.closeTime || '',
-      openTimeFormatted: s.openTimeFormatted ? formatTime12h(s.openTimeFormatted) : formatTime12h(s.openTime),
-      closeTimeFormatted: s.closeTimeFormatted ? formatTime12h(s.closeTimeFormatted) : formatTime12h(s.closeTime),
-    }));
+export function extractDaySessions(day: DayScheduleRecord): SessionInfo[] {
+  if (!day.enabled) return [];
+
+  const resultSessions: SessionInfo[] = [];
+
+  // 1. Extraer Sesión 1
+  const s1Open = day.session1OpenTime || day.openTime || (day.sessions && day.sessions[0]?.openTime);
+  const s1Close = day.session1CloseTime || day.closeTime || (day.sessions && day.sessions[0]?.closeTime);
+
+  if (s1Open && s1Close) {
+    resultSessions.push({
+      openTime: s1Open,
+      closeTime: s1Close,
+      openTimeFormatted: formatTime12h(s1Open),
+      closeTimeFormatted: formatTime12h(s1Close),
+    });
   }
 
-  if (day.openTime && day.closeTime) {
-    return [
-      {
-        openTime: day.openTime,
-        closeTime: day.closeTime,
-        openTimeFormatted: day.openTimeFormatted ? formatTime12h(day.openTimeFormatted) : formatTime12h(day.openTime),
-        closeTimeFormatted: day.closeTimeFormatted ? formatTime12h(day.closeTimeFormatted) : formatTime12h(day.closeTime),
-      },
-    ];
+  // 2. Extraer Sesión 2 si está habilitada
+  const isS2Enabled =
+    Boolean(day.session2Enabled) ||
+    Boolean(day.openTime2 && day.closeTime2) ||
+    Boolean(day.session2OpenTime && day.session2CloseTime) ||
+    Boolean(day.sessions && day.sessions.length > 1);
+
+  if (isS2Enabled) {
+    const s2Open = day.session2OpenTime || day.openTime2 || (day.sessions && day.sessions[1]?.openTime);
+    const s2Close = day.session2CloseTime || day.closeTime2 || (day.sessions && day.sessions[1]?.closeTime);
+
+    if (s2Open && s2Close) {
+      resultSessions.push({
+        openTime: s2Open,
+        closeTime: s2Close,
+        openTimeFormatted: formatTime12h(s2Open),
+        closeTimeFormatted: formatTime12h(s2Close),
+      });
+    }
   }
 
-  return [];
+  return resultSessions;
 }
 
 /**
- * Compara si dos listas de sesiones son idénticas en horario.
+ * Compara si dos arreglos de sesiones tienen exactamente los mismos horarios.
  */
 function areSessionsEqual(s1: SessionInfo[], s2: SessionInfo[]): boolean {
   if (s1.length !== s2.length) return false;
@@ -100,14 +125,15 @@ function areSessionsEqual(s1: SessionInfo[], s2: SessionInfo[]): boolean {
 }
 
 /**
- * Genera la etiqueta en español para un rango de días (ej. "Martes a Viernes", "Sábado y Domingo", "Lunes").
+ * Normaliza nombres de días a minúsculas en el segundo término para rangos naturales.
+ * Ejemplos: 'Martes a viernes', 'Sábado y domingo', 'Viernes'.
  */
 export function formatDayRangeLabel(days: DayScheduleRecord[]): string {
   if (days.length === 0) return '';
   if (days.length === 1) return days[0].dayName;
 
-  const firstDay = days[0].dayName;
-  const lastDay = days[days.length - 1].dayName;
+  const firstDay = days[0].dayName; // Ej: 'Martes', 'Sábado'
+  const lastDay = days[days.length - 1].dayName.toLowerCase(); // Ej: 'viernes', 'domingo'
 
   if (days.length === 2) {
     return `${firstDay} y ${lastDay}`;
@@ -117,12 +143,13 @@ export function formatDayRangeLabel(days: DayScheduleRecord[]): string {
 }
 
 /**
- * Agrupa días consecutivos con la misma configuración de apertura y sesiones.
+ * Agrupa días consecutivos ordenados por día de la semana (1..7).
+ * Separa inmediatamente cualquier día con horarios de sesión o estado diferente.
  */
-export function groupWeeklySchedule(weeklySchedule: DayScheduleRecord[]): DayScheduleGroup[] {
+export function groupWeeklyScheduleStrict(weeklySchedule: DayScheduleRecord[]): DayScheduleGroup[] {
   if (!weeklySchedule || weeklySchedule.length === 0) return [];
 
-  // Ordenar de Lunes (1) a Domingo (7)
+  // Ordenar días de Lunes (1) a Domingo (7)
   const sorted = [...weeklySchedule].sort((a, b) => (a.dayOfWeek || 0) - (b.dayOfWeek || 0));
 
   const groups: DayScheduleGroup[] = [];
@@ -133,7 +160,7 @@ export function groupWeeklySchedule(weeklySchedule: DayScheduleRecord[]): DaySch
 
   for (const day of sorted) {
     const enabled = Boolean(day.enabled);
-    const sessions = enabled ? getNormalizedSessions(day) : [];
+    const sessions = extractDaySessions(day);
     const closedReason = enabled ? undefined : day.closedReason || 'Cerrado por descanso';
 
     if (currentGroupDays.length === 0) {
@@ -142,13 +169,13 @@ export function groupWeeklySchedule(weeklySchedule: DayScheduleRecord[]): DaySch
       currentSessions = sessions;
       currentClosedReason = closedReason;
     } else {
-      const isSameStatus =
+      const isMatch =
         enabled === currentEnabled &&
         (enabled
           ? areSessionsEqual(sessions, currentSessions)
           : closedReason === currentClosedReason);
 
-      if (isSameStatus) {
+      if (isMatch) {
         currentGroupDays.push(day);
       } else {
         groups.push({
@@ -178,32 +205,4 @@ export function groupWeeklySchedule(weeklySchedule: DayScheduleRecord[]): DaySch
   }
 
   return groups;
-}
-
-/**
- * Genera el resumen en una sola línea para encabezados compactos (HeroSection y MenuPage).
- */
-export function formatGroupedScheduleSummary(
-  weeklySchedule?: DayScheduleRecord[],
-  fallbackText: string = 'Martes a Domingo: Desde las 11:00 a. m.'
-): string {
-  if (!weeklySchedule || weeklySchedule.length === 0) return fallbackText;
-
-  const groups = groupWeeklySchedule(weeklySchedule);
-  const openGroups = groups.filter((g) => g.enabled && g.sessions.length > 0);
-
-  if (openGroups.length === 0) return 'Cerrado temporalmente';
-
-  // Si hay un único grupo abierto (ej. Martes a Domingo)
-  return openGroups
-    .map((g) => {
-      const firstSession = g.sessions[0];
-      const lastSession = g.sessions[g.sessions.length - 1];
-      const timeSpan =
-        g.sessions.length > 1
-          ? `${firstSession.openTimeFormatted} – ${lastSession.closeTimeFormatted}`
-          : `${firstSession.openTimeFormatted} – ${firstSession.closeTimeFormatted}`;
-      return `${g.dayRangeLabel}: ${timeSpan}`;
-    })
-    .join(' · ');
 }

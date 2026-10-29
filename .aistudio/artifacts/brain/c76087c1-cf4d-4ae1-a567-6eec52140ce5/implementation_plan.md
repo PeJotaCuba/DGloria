@@ -1,84 +1,89 @@
-# Adaptación y Agrupamiento Inteligente de Horarios de Bar Terraza
+# Separación Estricta de Dos Sesiones y Agrupación de Horarios
 
-Implementación de la lectura, agrupación automática por días consecutivos y presentación elegante con doble sesión (sol/luna) de los horarios de Bar Terraza en el encabezado principal, la sección «Información práctica» y la página del menú web de Doña Gloria.
+Corrección de la lógica de extracción, agrupación y presentación visual de los horarios de apertura de Bar Terraza en la web de Doña Gloria (`/src`), garantizando la separación de dos sesiones independientes con iconos de sol y luna, y la correcta separación de días excepcionales según los diseños de referencia.
 
 > [!IMPORTANT] Decisiones Confirmadas por el Usuario
-> - **Resumen en encabezados compactos**: Mostrar el resumen completo de los grupos de días activos.
-> - **Formato de rangos de días**: Formato natural en español (ej. *Martes a Viernes*, *Sábado y Domingo*, *Lunes*).
+> - **Estilo de capitalización de días**: Minúscula en el segundo día del rango (ej. *Martes a viernes*, *Sábado y domingo*, *Viernes*).
+> - **Estilo de colores de iconos**: Icono de sol en ámbar cálido (`text-amber-400`) e icono de luna en azul suave (`text-blue-300`).
 
 ---
 
 ### 1. Visión General del Cambio
 
-- **Objetivo**: Conectar la web a la fuente única de verdad en Convex (`shift_schedules.weeklySchedule`), procesando los datos para agrupar días consecutivos con horarios e impulsos de apertura idénticos, soportando hasta dos sesiones diarias con iconos temáticos de sol y luna.
-- **Alcance**:
-  1. `src/utils/schedule.ts`: Módulo de utilidad para parsear, formatear a 12h, agrupar días consecutivos y generar resúmenes amigables.
-  2. `src/components/HeroSection.tsx`: Encabezado de portada con el resumen agrupado activo.
-  3. `src/components/ContactSection.tsx`: Sección «Información práctica» con tarjetas/líneas agrupadas de horarios y sesiones.
-  4. `src/pages/MenuPage.tsx`: Encabezado de la página de menú con la franja de horarios agrupados.
+- **Objetivo**: Renderizar de forma independiente la primera y segunda sesión de apertura de Bar Terraza en todos los puntos de la web, agrupando días consecutivos únicamente cuando sus horarios completos y sesiones sean 100% idénticos y separando las excepciones en su propio bloque.
+- **Alcance de Modificación**:
+  1. `src/utils/schedule.ts`: Lógica estricta de parseo de campos de `session1` y `session2`, formateo de horas a 12h en español (`11:00 a. m. – 3:00 p. m.`) y agrupamiento exacto por secuencia semanal.
+  2. `src/components/HeroSection.tsx`: Presentación vertical estructurada con el rango de días arriba y las líneas de sesión abajo en bloques independientes.
+  3. `src/components/ContactSection.tsx`: Tarjeta de «Información Práctica» alineada fielmente a las capturas provistas.
+  4. `src/pages/MenuPage.tsx`: Franja de horarios del menú ajustada a bloques independientes.
 
 ---
 
-### 2. Diseño de Experiencia de Usuario (UX) y Estética Visual
+### 2. Diseño de Experiencia de Usuario y Estructura Visual
 
-- **Estructura de Agrupación**:
-  - Días con la misma configuración de apertura y sesiones se agrupan en una sola entrada.
-  - Ejemplo: Si de Martes a Viernes se abre de 11:00 a.m. a 4:00 p.m. y de 7:00 p.m. a 11:30 p.m., se muestra como una única fila/tarjeta:
-    - **Martes a Viernes**
-    - ☀️ *Sesión 1*: 11:00 a. m. – 4:00 p. m.
-    - 🌙 *Sesión 2*: 7:00 p. m. – 11:30 p. m.
-  - Días cerrados se indican explícitamente con su motivo o "Cerrado".
-- **Iconografía**:
-  - `Sun` (Lucide) para la primera sesión (comida / día).
-  - `Moon` (Lucide) para la segunda sesión (cena / noche).
-- **Temática**:
-  - Estilo cálido, prémium e impecable sobre fondo claro con acentos dorados/ámbar, consistente con el diseño existente de Doña Gloria.
+Alineado exactamente con los mockups proporcionados en las imágenes enviadas:
+
+```
+Martes a viernes
+☀️  11:00 a. m. – 3:00 p. m.
+🌙  6:00 p. m. – 12:00 a. m.
+──────────────────────────────
+Viernes  (si tiene diferencia)
+☀️  11:00 a. m. – 2:00 p. m.
+🌙  6:00 p. m. – 12:00 a. m.
+──────────────────────────────
+Sábado y domingo
+☀️  11:00 a. m. – 3:00 p. m.
+🌙  6:00 p. m. – 2:00 a. m.
+```
 
 ---
 
 ### 3. Arquitectura Técnica y Flujo de Datos
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│              Convex DB: shift_schedules                 │
-│         (getPublicOpeningHours / weeklySchedule)        │
-└────────────────────────────┬────────────────────────────┘
-                             │
-                             ▼
-┌─────────────────────────────────────────────────────────┐
-│               src/utils/schedule.ts                     │
-│  - parseDaySchedule(record)                             │
-│  - groupWeeklySchedule(weeklyScheduleArray)             │
-│  - formatGroupedScheduleSummary(groups)                 │
-└──────────────┬─────────────┬─────────────┬──────────────┘
-               │             │             │
-               ▼             ▼             ▼
-       ┌──────────────┐┌───────────┐┌──────────────┐
-       │ HeroSection  ││  Contact  ││  MenuPage    │
-       │  (Portada)   ││ (Práctica)││  (Página)    │
-       └──────────────┘└───────────┘└──────────────┘
+┌───────────────────────────────────────────────────────────┐
+│        Convex DB: shift_schedules.weeklySchedule          │
+│ (session1OpenTime, session1CloseTime, session2Enabled,    │
+│  session2OpenTime, session2CloseTime, openTime, etc.)     │
+└──────────────────────────────┬────────────────────────────┘
+                               │
+                               ▼
+┌───────────────────────────────────────────────────────────┐
+│                 src/utils/schedule.ts                     │
+│  - parseDayRecord(day) -> { session1, session2 }          │
+│  - groupWeeklyScheduleStrict(weeklySchedule)              │
+└──────────────┬───────────────┬───────────────┬────────────┘
+               │               │               │
+               ▼               ▼               ▼
+       ┌──────────────┐ ┌─────────────┐ ┌──────────────┐
+       │ HeroSection  │ │ ContactCard │ │   MenuPage   │
+       │ (Estructura  │ │  (Estructura│ │ (Estructura  │
+       │  Vertical)   │ │  Con Iconos)│ │  Vertical)   │
+       └──────────────┘ └─────────────┘ └──────────────┘
 ```
 
 ---
 
-### 4. Componentes y Funciones de Utilidad
+### 4. Detalles de Implementación por Archivo
 
 1. **`src/utils/schedule.ts`**:
-   - `formatTime12h(timeStr)`: Convierte formatos "HH:mm" de 24h a 12h con sufijo "a. m." / "p. m.".
-   - `parseDaySchedule(item)`: Extrae y normaliza las sesiones 1 y 2 considerando campos nativos y de respaldo (`session1OpenTime`, `session2OpenTime`, `openTime`, `openTime2`).
-   - `groupWeeklySchedule(schedule)`: Ordena por `dayOfWeek` (1 a 7) y agrupa días adyacentes con coincidencia exacta de estado y sesiones.
-   - Genera nombres naturales como "Martes a Viernes" o "Sábado y Domingo".
+   - Parsear explícitamente `session1OpenTime` / `openTime` y `session1CloseTime` / `closeTime`.
+   - Parsear `session2` sólo si `session2Enabled` es `true` o existen `session2OpenTime`/`openTime2`.
+   - Formatear tiempos de 24h a 12h con sufijos `a. m.` / `p. m.`.
+   - Agrupar días consecutivos (1 = Lunes a 7 = Domingo) validando igualdad de `enabled`, `session1` y `session2`.
+   - Formatear etiquetas de días: `Martes a viernes`, `Sábado y domingo`, `Viernes`.
 
 2. **`ContactSection.tsx`**:
-   - Renderiza los grupos obtenidos en lugar de mapear los 7 días individualmente.
-   - Cada grupo muestra el rango de días y las líneas de sesión con iconos de sol y luna.
+   - Tarjeta con panel oscuro y bordes tenues.
+   - Título de grupo en negrita, seguido de líneas con icono de sol (ámbar) y luna (azul) alineados.
 
 3. **`HeroSection.tsx` & `MenuPage.tsx`**:
-   - Muestran el resumen global estilizado de horarios activos agrupados.
+   - Mapear los bloques agrupados mostrando en primer lugar el rango de días y debajo las dos líneas de sesión de forma clara y limpia.
 
 ---
 
-### 5. Plan de Pruebas y Verificación
+### 5. Plan de Verificación
 
-- Ejecutar `lint_applet` para asegurar cero errores de TypeScript y sintaxis.
-- Ejecutar `compile_applet` para validar que la compilación Vite/React sea 100% limpia.
+- Ejecutar `lint_applet` para confirmar la ausencia de errores de sintaxis y tipos en TypeScript.
+- Ejecutar `compile_applet` para validar la compilación exitosa de Vite/React.

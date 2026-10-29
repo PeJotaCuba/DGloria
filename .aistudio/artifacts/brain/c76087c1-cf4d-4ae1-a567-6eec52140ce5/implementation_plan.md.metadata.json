@@ -1,6 +1,6 @@
 {
-  "summary":  "Plan de implementación para la lectura, agrupación y visualización de los horarios de apertura de Bar Terraza en la web de Doña Gloria.",
-  "updatedAt":  "2026-10-29T13:37:22.539520512Z",
+  "summary":  "Plan de implementación para la separación estricta de dos sesiones de apertura y agrupación con excepciones por día en la web de Doña Gloria.",
+  "updatedAt":  "2026-10-29T14:00:32.865942931Z",
   "requestFeedback":  true,
   "userFacing":  true
 }
