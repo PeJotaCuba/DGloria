@@ -176,6 +176,7 @@ export {
   getReservation,
   updateReservationStatus,
   deleteReservation,
+  getPublicReservationStatus,
 } from "./reservations";
 
 

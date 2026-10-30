@@ -5,8 +5,43 @@ import { assertAdminPermission } from "./auth";
 /**
  * Estados permitidos para el ciclo de vida de una reservación de Bar Terraza.
  */
-export const RESERVATION_STATUSES = ["pending", "confirmed", "rejected", "cancelled"] as const;
+export const RESERVATION_STATUSES = [
+  "pending",
+  "negotiation",
+  "confirmed",
+  "rejected",
+  "cancelled",
+  "consolidated",
+  "completed",
+  "fulfilled",
+] as const;
 export type ReservationStatus = (typeof RESERVATION_STATUSES)[number];
+
+/**
+ * Genera un código de seguimiento privado aleatorio, no predecible y amigable para humanos.
+ * Formato: DG-XXXXXX (ej. DG-7K2M9P)
+ */
+function generateTrackingCode(): string {
+  const charset = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
+  let randomStr = "";
+  for (let i = 0; i < 6; i++) {
+    randomStr += charset.charAt(Math.floor(Math.random() * charset.length));
+  }
+  return `DG-${randomStr}`;
+}
+
+/**
+ * Calcula el hash SHA-256 en formato hex del código de seguimiento.
+ * Se normaliza a mayúsculas y sin espacios antes de aplicar el hash.
+ */
+export async function hashTrackingCode(code: string): Promise<string> {
+  const normalized = code.trim().toUpperCase().replace(/\s+/g, "");
+  const encoder = new TextEncoder();
+  const data = encoder.encode(normalized);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+}
 
 /**
  * Función pública de registro de solicitudes de reservación desde la web.
@@ -14,9 +49,10 @@ export type ReservationStatus = (typeof RESERVATION_STATUSES)[number];
  * Requisitos:
  * 1. Valida estrictamente todos los campos enviados.
  * 2. Asigna obligatoriamente el estado 'pending' (pendiente) desde el servidor.
- * 3. Asigna la marca de tiempo createdAt del servidor.
- * 4. Fija el origen como 'web'.
- * 5. No permite que clientes web alteren estados ni suministren campos administrativos.
+ * 3. Genera un código privado de seguimiento no predecible y almacena ÚNICAMENTE su hash SHA-256.
+ * 4. Asigna la marca de tiempo createdAt del servidor.
+ * 5. Fija el origen como 'web'.
+ * 6. Devuelve el código de seguimiento plano ÚNICAMENTE tras guardar con éxito el registro.
  */
 export const createPublicReservation = mutation({
   args: {
@@ -65,6 +101,10 @@ export const createPublicReservation = mutation({
     const now = Date.now();
     const customId = `res-${now}-${Math.random().toString(36).substring(2, 8)}`;
 
+    // Generar código de seguimiento plano y su hash SHA-256
+    const plainTrackingCode = generateTrackingCode();
+    const trackingCodeHash = await hashTrackingCode(plainTrackingCode);
+
     // Toda solicitud web inicia rigurosamente en estado 'pending'
     const newDocId = await ctx.db.insert("restaurant_reservations", {
       id: customId,
@@ -77,6 +117,7 @@ export const createPublicReservation = mutation({
       specialNotes,
       status: "pending",
       source: "web",
+      trackingCodeHash,
       createdAt: now,
       updatedAt: now,
     });
@@ -85,8 +126,62 @@ export const createPublicReservation = mutation({
       success: true,
       reservationId: newDocId,
       id: customId,
+      trackingCode: plainTrackingCode,
       status: "pending",
       message: "Solicitud de reservación registrada en estado pendiente.",
+    };
+  },
+});
+
+/**
+ * Consulta pública para que un cliente verifique el estado actualizado de su propia reservación
+ * introduciendo su código privado de seguimiento (ej. "DG-7K2M9P").
+ *
+ * Devuelve EXCLUSIVAMENTE los datos públicos necesarios para informar al cliente sin exponer
+ * datos personales sensibles (teléfono, correo, notas internas) ni otros registros.
+ */
+export const getPublicReservationStatus = query({
+  args: {
+    trackingCode: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const rawCode = args.trackingCode.trim().toUpperCase();
+    if (!rawCode || rawCode.length < 4) {
+      return {
+        found: false,
+        message: "Por favor, introduce un código de seguimiento válido.",
+      };
+    }
+
+    const hashedInput = await hashTrackingCode(rawCode);
+
+    const match = await ctx.db
+      .query("restaurant_reservations")
+      .withIndex("by_tracking_code_hash", (q) => q.eq("trackingCodeHash", hashedInput))
+      .first();
+
+    if (!match) {
+      return {
+        found: false,
+        message: "No se encontró ninguna reservación asociada al código proporcionado. Si tu solicitud fue realizada antes de la activación de códigos privados de seguimiento, consulta directamente al establecimiento.",
+      };
+    }
+
+    // Mapeo estrictamente público y seguro (sin teléfonos, emails ni notas internas)
+    return {
+      found: true,
+      fullName: match.fullName,
+      date: match.date,
+      time: match.time,
+      partySize: match.partySize,
+      seatingArea: match.seatingArea || "terraza",
+      status: match.status,
+      statusReason: match.statusReason,
+      assignedTable: match.assignedTable,
+      proposedDate: match.proposedDate,
+      proposedTime: match.proposedTime,
+      createdAt: match.createdAt,
+      updatedAt: match.updatedAt,
     };
   },
 });
@@ -196,13 +291,17 @@ export const getReservation = query({
 
 /**
  * Mutación administrativa protegida para actualizar el estado de una reservación.
- * Permite que Android confirme (`confirmed`), rechace (`rejected`) o cancele (`cancelled`) solicitudes.
+ * Permite que Android confirme (`confirmed`), negocie (`negotiation`), rechace (`rejected`),
+ * cancele (`cancelled`) o consolide (`consolidated`) solicitudes.
  */
 export const updateReservationStatus = mutation({
   args: {
     id: v.string(),
     status: v.string(),
     statusReason: v.optional(v.string()),
+    assignedTable: v.optional(v.string()),
+    proposedDate: v.optional(v.string()),
+    proposedTime: v.optional(v.string()),
     adminToken: v.optional(v.string()),
     sessionToken: v.optional(v.string()),
     userId: v.optional(v.string()),
@@ -241,14 +340,20 @@ export const updateReservationStatus = mutation({
     const adminId = args.userId || admin.subject || "admin";
     const adminName = admin.name || "Administrador";
 
-    // 3. Aplicar actualización de estado
-    await ctx.db.patch(reservation._id, {
+    // 3. Aplicar actualización de estado y campos asociados
+    const updates: any = {
       status: targetStatus,
       updatedAt: now,
-      statusReason: args.statusReason !== undefined ? args.statusReason.trim() : reservation.statusReason,
       updatedByUserId: adminId,
       updatedByUserName: adminName,
-    });
+    };
+
+    if (args.statusReason !== undefined) updates.statusReason = args.statusReason.trim();
+    if (args.assignedTable !== undefined) updates.assignedTable = args.assignedTable.trim();
+    if (args.proposedDate !== undefined) updates.proposedDate = args.proposedDate.trim();
+    if (args.proposedTime !== undefined) updates.proposedTime = args.proposedTime.trim();
+
+    await ctx.db.patch(reservation._id, updates);
 
     return {
       success: true,
@@ -302,4 +407,3 @@ export const deleteReservation = mutation({
  */
 export const submitReservation = createPublicReservation;
 export const getReservations = listReservations;
-

@@ -316,12 +316,18 @@ export default defineSchema(
       statusReason: v.optional(v.string()),
       updatedByUserId: v.optional(v.string()),
       updatedByUserName: v.optional(v.string()),
+      // Campos para consulta privada de estado y gestión administrativa
+      trackingCodeHash: v.optional(v.string()),
+      assignedTable: v.optional(v.string()),
+      proposedDate: v.optional(v.string()),
+      proposedTime: v.optional(v.string()),
     })
       .index("by_status", ["status"])
       .index("by_date", ["date"])
       .index("by_createdAt", ["createdAt"])
       .index("by_status_and_date", ["status", "date"])
       .index("by_status_and_createdAt", ["status", "createdAt"])
+      .index("by_tracking_code_hash", ["trackingCodeHash"])
       .index("by_custom_id", ["id"]),
   },
   {
