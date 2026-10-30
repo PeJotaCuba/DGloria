@@ -95,29 +95,41 @@ export const MenuPage: React.FC = () => {
               <span>{BUSINESS_INFO.address}</span>
             </div>
             {groupedSchedule.length > 0 && (
-              <div className="flex items-start gap-2 text-left bg-[#2A2A2A]/60 px-4 py-2 rounded-lg border border-[#333]">
-                <Clock className="w-3.5 h-3.5 text-[#E3B87C] mt-0.5 shrink-0" />
-                <div className="space-y-1.5">
+              <div className="flex flex-col gap-3 max-w-sm mx-auto w-full">
+                <div className="flex items-center justify-center gap-2 mb-1">
+                  <Clock className="w-4 h-4 text-[#E3B87C]" />
+                  <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#E3B87C]">Horarios de Hoy y Excepciones</span>
+                </div>
+                <div className="grid grid-cols-1 gap-2.5">
                   {groupedSchedule.map((group, idx) => (
-                    <div key={idx} className="space-y-0.5">
-                      <span className="block text-[11px] font-semibold text-[#E3B87C]">
-                        {group.dayRangeLabel}
-                      </span>
-                      {group.enabled && group.sessions.length > 0 ? (
-                        group.sessions.map((session, sIdx) => {
-                          const Icon = sIdx === 0 ? Sun : Moon;
-                          return (
-                            <div key={sIdx} className="flex items-center gap-1.5 text-[11px] font-mono text-[#FFFBF2]">
-                              <Icon className={`w-3 h-3 shrink-0 ${sIdx === 0 ? 'text-amber-400' : 'text-blue-300'}`} />
-                              <span>{session.openTimeFormatted} – {session.closeTimeFormatted}</span>
-                            </div>
-                          );
-                        })
-                      ) : (
-                        <span className="text-[11px] text-[#8A8380] italic block">
-                          {group.closedReason || 'Cerrado por descanso'}
+                    <div key={idx} className="bg-[#2A2A2A]/40 border border-white/5 rounded-xl p-3 flex flex-col gap-2">
+                      <div className="flex items-center justify-between border-b border-white/5 pb-1.5">
+                        <span className="text-[10px] font-bold text-[#FFFBF2] uppercase tracking-wider">
+                          {group.dayRangeLabel}
                         </span>
-                      )}
+                        {!group.enabled && (
+                          <span className="text-[9px] text-red-400 font-bold uppercase tracking-tighter">Cerrado</span>
+                        )}
+                      </div>
+                      <div className="grid grid-cols-1 xs:grid-cols-2 gap-2">
+                        {group.enabled && group.sessions.length > 0 ? (
+                          group.sessions.map((session, sIdx) => {
+                            const Icon = sIdx === 0 ? Sun : Moon;
+                            return (
+                              <div key={sIdx} className="flex items-center gap-2 text-[11px] font-mono bg-black/20 py-1.5 px-2 rounded-lg">
+                                <Icon className={`w-3 h-3 shrink-0 ${sIdx === 0 ? 'text-amber-400' : 'text-blue-300'}`} />
+                                <span className="text-[#E9E2D6]">{session.openTimeFormatted} – {session.closeTimeFormatted}</span>
+                              </div>
+                            );
+                          })
+                        ) : (
+                          <div className="col-span-2 text-center py-1">
+                            <span className="text-[10px] text-[#8A8380] italic">
+                              {group.closedReason || 'Cerrado'}
+                            </span>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>

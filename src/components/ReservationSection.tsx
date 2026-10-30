@@ -27,6 +27,7 @@ import {
 import { ReservationRequest } from '../lib/convex';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
+import { getReservationStatusMeta } from '../utils/reservations';
 
 export const ReservationSection: React.FC = () => {
   const createReservation = useMutation(api.reservations.createPublicReservation);
@@ -148,77 +149,14 @@ export const ReservationSection: React.FC = () => {
 
   const handleCheckCodeNow = (code?: string) => {
     if (!code) return;
-    setLookupInput(code);
-    setActiveQueryCode(code);
-    setActiveTab('lookup');
+    const url = `/consulta?code=${code}`;
+    window.history.pushState({ path: url }, '', url);
+    window.dispatchEvent(new Event('popstate'));
   };
 
   const todayStr = new Date().toISOString().split('T')[0];
 
-  // Helper para renderizar estado público de reservación
-  const renderStatusBadge = (status?: string) => {
-    const s = (status || '').toLowerCase();
-    switch (s) {
-      case 'pending':
-        return {
-          label: 'Pendiente de Revisión',
-          badgeClass: 'bg-amber-500/20 text-amber-300 border-amber-500/40',
-          icon: Clock,
-          title: 'Solicitud recibida',
-          desc: 'Tu solicitud ha sido registrada correctamente en el sistema. Nuestro equipo está revisando la disponibilidad y confirmará tu reservación a la brevedad.',
-        };
-      case 'negotiation':
-        return {
-          label: 'Negociación / Propuesta Alternativa',
-          badgeClass: 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40',
-          icon: AlertTriangle,
-          title: 'Propuesta de horario o fecha alternativa',
-          desc: 'El establecimiento ha propuesto un ajuste de horario o fecha para poder atenderte en la terraza.',
-        };
-      case 'confirmed':
-        return {
-          label: 'Reservación Confirmada',
-          badgeClass: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40',
-          icon: CheckCircle2,
-          title: '¡Reserva confirmada!',
-          desc: 'Tu reservación ha sido aceptada y confirmada en Bar Terraza. ¡Te esperamos!',
-        };
-      case 'rejected':
-        return {
-          label: 'No Disponible / Rechazada',
-          badgeClass: 'bg-red-500/20 text-red-300 border-red-500/40',
-          icon: XCircle,
-          title: 'Solicitud no disponible',
-          desc: 'Lamentablemente no fue posible aceptar la reservación para el horario o fecha indicados.',
-        };
-      case 'cancelled':
-        return {
-          label: 'Cancelada',
-          badgeClass: 'bg-gray-500/20 text-gray-300 border-gray-500/40',
-          icon: RotateCcw,
-          title: 'Solicitud cancelada',
-          desc: 'Esta solicitud de reservación ha sido cancelada.',
-        };
-      case 'consolidated':
-      case 'completed':
-      case 'fulfilled':
-        return {
-          label: 'Consolidada / Asistencia Registrada',
-          badgeClass: 'bg-teal-500/20 text-teal-300 border-teal-500/40',
-          icon: FileCheck2,
-          title: 'Visita realizada',
-          desc: 'La visita ha sido registrada exitosamente en Bar Terraza. ¡Gracias por compartir con nosotros!',
-        };
-      default:
-        return {
-          label: 'Estado Desconocido',
-          badgeClass: 'bg-gray-500/20 text-gray-300 border-gray-500/40',
-          icon: Clock,
-          title: 'Estado de solicitud',
-          desc: 'La solicitud se encuentra en proceso.',
-        };
-    };
-  };
+
 
   return (
     <section id="reservas" className="relative py-24 px-6 sm:px-8">
@@ -578,7 +516,7 @@ export const ReservationSection: React.FC = () => {
                       </div>
                     ) : (
                       (() => {
-                        const statusMeta = renderStatusBadge(lookupResult.status);
+                        const statusMeta = getReservationStatusMeta(lookupResult.status);
                         const StatusIcon = statusMeta.icon;
 
                         return (

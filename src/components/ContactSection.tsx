@@ -124,29 +124,49 @@ export const ContactSection: React.FC = () => {
                 Atención para almuerzos y servicio continuado de bar y cenas en terraza.
               </p>
             </div>
-            <div className="pt-4 border-t border-[#E9E2D6]/10 space-y-4 max-h-[300px] overflow-y-auto pr-1">
+            <div className="pt-4 border-t border-[#E9E2D6]/10 space-y-5 max-h-[350px] overflow-y-auto pr-1">
               {groupedSchedule.length > 0 ? (
                 groupedSchedule.map((group, idx) => (
-                  <div key={idx} className="pb-3 border-b border-[#E9E2D6]/10 last:border-0 last:pb-0 space-y-2">
-                    <span className="text-sm font-semibold text-[#FFFBF2] block font-sans">
-                      {group.dayRangeLabel}
-                    </span>
+                  <div key={idx} className="pb-4 border-b border-[#E9E2D6]/10 last:border-0 last:pb-0 space-y-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-xs font-bold text-[#FFFBF2] uppercase tracking-widest font-sans">
+                        {group.dayRangeLabel}
+                      </span>
+                      {!group.enabled && (
+                        <span className="text-[10px] bg-red-500/20 text-red-400 px-2 py-0.5 rounded border border-red-500/30 uppercase font-bold tracking-tighter">
+                          Cerrado
+                        </span>
+                      )}
+                    </div>
                     {group.enabled && group.sessions.length > 0 ? (
-                      <div className="space-y-1.5 pl-0.5">
+                      <div className="grid grid-cols-1 gap-2">
                         {group.sessions.map((session, sIdx) => {
                           const Icon = sIdx === 0 ? Sun : Moon;
+                          const iconColor = sIdx === 0 ? 'text-amber-400' : 'text-blue-300';
+                          const bgColor = sIdx === 0 ? 'bg-amber-400/5' : 'bg-blue-400/5';
+                          const borderColor = sIdx === 0 ? 'border-amber-400/20' : 'border-blue-400/20';
+                          
                           return (
-                            <div key={sIdx} className="flex items-center gap-2.5 text-xs text-[#E9E2D6] font-mono">
-                              <Icon className={`w-4 h-4 shrink-0 ${sIdx === 0 ? 'text-amber-400' : 'text-blue-300'}`} />
-                              <span>{session.openTimeFormatted} – {session.closeTimeFormatted}</span>
+                            <div key={sIdx} className={`flex items-center justify-between p-2.5 rounded border ${bgColor} ${borderColor}`}>
+                              <div className="flex items-center gap-2.5">
+                                <Icon className={`w-4 h-4 shrink-0 ${iconColor}`} />
+                                <span className="text-[10px] uppercase font-bold text-[#8A8380] tracking-wider">
+                                  {sIdx === 0 ? 'Almuerzo' : 'Bar & Cena'}
+                                </span>
+                              </div>
+                              <span className="text-xs font-mono text-[#FFFBF2] font-semibold">
+                                {session.openTimeFormatted} – {session.closeTimeFormatted}
+                              </span>
                             </div>
                           );
                         })}
                       </div>
                     ) : (
-                      <span className="text-xs text-[#E9E2D6]/60 italic block pl-0.5">
-                        {group.closedReason || 'Cerrado por descanso'}
-                      </span>
+                      <div className="p-3 bg-white/5 rounded border border-white/10 text-center">
+                        <span className="text-xs text-[#E9E2D6]/60 italic block">
+                          {group.closedReason || 'Cerrado por descanso'}
+                        </span>
+                      </div>
                     )}
                   </div>
                 ))

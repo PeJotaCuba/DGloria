@@ -9,6 +9,7 @@ import { ReservationSection } from './components/ReservationSection';
 import { ContactSection } from './components/ContactSection';
 import { Footer } from './components/Footer';
 import { MenuPage } from './pages/MenuPage';
+import { ReservationLookupPage } from './pages/ReservationLookupPage';
 
 export default function App() {
   const [currentPath, setCurrentPath] = useState<string>(() => window.location.pathname);
@@ -28,6 +29,11 @@ export default function App() {
   // Si la ruta es /menu o /menu/, renderizar la página exclusiva del menú
   if (currentPath === '/menu' || currentPath === '/menu/') {
     return <MenuPage />;
+  }
+
+  // Si la ruta es /consulta o /consulta/, renderizar la página de búsqueda de reservaciones
+  if (currentPath === '/consulta' || currentPath === '/consulta/') {
+    return <ReservationLookupPage />;
   }
 
   // Página de inicio (Landing Page)
