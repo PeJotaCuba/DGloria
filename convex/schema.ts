@@ -298,6 +298,31 @@ export default defineSchema(
       updatedByUserId: v.optional(v.string()),
       updatedByUserName: v.optional(v.string()),
     }).index("by_custom_id", ["id"]),
+
+    // Reservaciones de Bar Terraza (compartidas entre Web y Android)
+    restaurant_reservations: defineTable({
+      id: v.optional(v.string()),
+      fullName: v.string(),
+      emailOrPhone: v.string(),
+      date: v.string(),
+      time: v.string(),
+      partySize: v.number(),
+      seatingArea: v.optional(v.string()),
+      specialNotes: v.optional(v.string()),
+      status: v.string(),
+      source: v.string(),
+      createdAt: v.number(),
+      updatedAt: v.optional(v.number()),
+      statusReason: v.optional(v.string()),
+      updatedByUserId: v.optional(v.string()),
+      updatedByUserName: v.optional(v.string()),
+    })
+      .index("by_status", ["status"])
+      .index("by_date", ["date"])
+      .index("by_createdAt", ["createdAt"])
+      .index("by_status_and_date", ["status", "date"])
+      .index("by_status_and_createdAt", ["status", "createdAt"])
+      .index("by_custom_id", ["id"]),
   },
   {
     schemaValidation: false,

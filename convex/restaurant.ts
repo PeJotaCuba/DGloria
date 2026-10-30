@@ -164,3 +164,18 @@ export const upsertMenuItem = mutation({
     }
   },
 });
+
+/**
+ * Re-exportaciones de compatibilidad para reservaciones de Bar Terraza desde Android.
+ */
+export {
+  createPublicReservation,
+  submitReservation,
+  listReservations,
+  getReservations,
+  getReservation,
+  updateReservationStatus,
+  deleteReservation,
+} from "./reservations";
+
+
