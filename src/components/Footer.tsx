@@ -82,7 +82,7 @@ export const Footer: React.FC = () => {
             <img
               src={ASSETS.nectysLogo}
               alt="Nectys"
-              className="h-6 sm:h-7 w-auto object-contain transition-opacity duration-300 hover:opacity-90"
+              className="w-[70px] h-auto object-contain transition-opacity duration-300 hover:opacity-90"
               loading="lazy"
             />
           </div>
