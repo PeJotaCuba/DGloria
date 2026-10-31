@@ -8,6 +8,12 @@ import { useState, useEffect, useCallback } from 'react';
 const DISMISS_STORAGE_KEY = 'dona_gloria_pwa_dismiss_timestamp';
 const DEFAULT_DISMISS_DAYS = 7;
 
+declare global {
+  interface Window {
+    __pwaInstallPrompt?: BeforeInstallPromptEvent;
+  }
+}
+
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform: string }>;
@@ -37,7 +43,12 @@ export function checkIsIOS(): boolean {
 }
 
 export function usePWAInstall() {
-  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(() => {
+    if (typeof window !== 'undefined' && window.__pwaInstallPrompt) {
+      return window.__pwaInstallPrompt;
+    }
+    return null;
+  });
   const [isInstalled, setIsInstalled] = useState<boolean>(() => checkIsStandalone());
   const [isIOS, setIsIOS] = useState<boolean>(() => checkIsIOS());
   const [showIOSGuide, setShowIOSGuide] = useState<boolean>(false);
@@ -71,13 +82,16 @@ export function usePWAInstall() {
     // Interceptar beforeinstallprompt en Chromium / Android / Edge / Desktop
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
-      setDeferredPrompt(e as BeforeInstallPromptEvent);
+      const promptEvent = e as BeforeInstallPromptEvent;
+      window.__pwaInstallPrompt = promptEvent;
+      setDeferredPrompt(promptEvent);
     };
 
     // Escuchar cuando la app ha sido instalada exitosamente por el sistema
     const handleAppInstalled = () => {
       setIsInstalled(true);
       setDeferredPrompt(null);
+      window.__pwaInstallPrompt = undefined;
       try {
         localStorage.removeItem(DISMISS_STORAGE_KEY);
       } catch {
@@ -112,6 +126,7 @@ export function usePWAInstall() {
         if (choice.outcome === 'accepted') {
           setIsInstalled(true);
           setDeferredPrompt(null);
+          window.__pwaInstallPrompt = undefined;
           return 'accepted';
         }
         return 'dismissed';
