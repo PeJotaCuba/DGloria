@@ -4,7 +4,7 @@
  */
 
 import React, { useState } from 'react';
-import { MapPin, Clock, MessageSquare, Send, Check, QrCode, ExternalLink, Copy, Sun, Moon } from 'lucide-react';
+import { MapPin, Clock, MessageSquare, Send, Check, Sun, Moon } from 'lucide-react';
 import { BUSINESS_INFO, WHATSAPP_URL_NUMBER } from '../lib/assets';
 import { useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
@@ -16,23 +16,8 @@ export const ContactSection: React.FC = () => {
   const [inquirySubject, setInquirySubject] = useState('');
   const [inquiryMsg, setInquiryMsg] = useState('');
   const [sent, setSent] = useState(false);
-  const [copied, setCopied] = useState(false);
 
   const groupedSchedule = groupWeeklyScheduleStrict(openingHours?.weeklySchedule || []);
-
-  // Determinar la URL pública de producción para el código QR (utilizando window.location.origin o dominio definitivo de Vercel)
-  const productionMenuUrl = typeof window !== 'undefined'
-    ? `${window.location.origin}/menu`
-    : 'https://donagloria.vercel.app/menu';
-
-  // Usar una API estándar y gratuita de generación de códigos QR (qrserver.com)
-  const qrCodeImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(productionMenuUrl)}&color=1E1E1E&bgcolor=FFFBF2`;
-
-  const handleCopyLink = () => {
-    navigator.clipboard.writeText(productionMenuUrl);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 3000);
-  };
 
   const getInquiryWhatsAppUrl = () => {
     const message =
@@ -65,12 +50,12 @@ export const ContactSection: React.FC = () => {
           </h2>
           <div className="w-16 h-0.5 bg-[#9B1B30] mx-auto mb-6" />
           <p className="text-base text-[#E9E2D6]/85 font-light leading-relaxed">
-            Te esperamos en {BUSINESS_INFO.city}, {BUSINESS_INFO.country}. Encuentra a continuación nuestra ubicación, horarios y el código QR oficial de acceso a la carta.
+            Te esperamos en {BUSINESS_INFO.city}, {BUSINESS_INFO.country}. Encuentra a continuación nuestra ubicación y horarios.
           </p>
         </div>
 
-        {/* Practical Info Cards: 3 Columns (Location, Schedule, QR Menu Access) */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+        {/* Practical Info Cards: 2 Columns (Location, Schedule) */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
           {/* Location Card */}
           <div className="glass-panel-dark p-8 rounded-lg flex flex-col justify-between border border-[#E9E2D6]/10">
             <div>
@@ -175,52 +160,6 @@ export const ContactSection: React.FC = () => {
                   Cargando programación oficial...
                 </div>
               )}
-            </div>
-          </div>
-
-          {/* QR Menu Card */}
-          <div className="glass-panel-dark p-8 rounded-lg flex flex-col justify-between border border-[#E9E2D6]/10">
-            <div>
-              <div className="w-12 h-12 rounded bg-[#9B1B30]/15 border border-[#9B1B30]/30 text-[#9B1B30] flex items-center justify-center mb-6">
-                <QrCode className="w-6 h-6" />
-              </div>
-              <h3 className="font-serif text-lg font-bold text-[#FFFBF2] mb-2">
-                Código QR del Menú
-              </h3>
-              <p className="text-xs text-[#E9E2D6]/80 font-light leading-relaxed mb-4">
-                Escanea con tu teléfono para abrir la carta digital directamente en mesa.
-              </p>
-            </div>
-
-            <div className="pt-4 border-t border-[#E9E2D6]/15 flex flex-col items-center gap-3">
-              <div className="bg-[#FFFBF2] p-2.5 rounded-lg shadow-sm">
-                <img
-                  src={qrCodeImageUrl}
-                  alt="Código QR del Menú Doña Gloria"
-                  className="w-32 h-32 object-contain"
-                />
-              </div>
-
-              <div className="w-full flex items-center justify-between gap-2 pt-1">
-                <a
-                  href="/menu"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-[#FFFBF2] bg-[#9B1B30] hover:bg-[#801426] rounded transition-colors"
-                >
-                  <ExternalLink className="w-3 h-3" />
-                  <span>Ver Menú</span>
-                </a>
-                <button
-                  type="button"
-                  onClick={handleCopyLink}
-                  className="inline-flex items-center justify-center gap-1 px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-[#E9E2D6] bg-[#1E1E1E] hover:bg-[#2A2A2A] border border-[#E9E2D6]/20 rounded transition-colors"
-                  title="Copiar enlace de la carta"
-                >
-                  {copied ? <Check className="w-3 h-3 text-green-400" /> : <Copy className="w-3 h-3" />}
-                  <span>{copied ? 'Copiado' : 'Copiar'}</span>
-                </button>
-              </div>
             </div>
           </div>
         </div>
