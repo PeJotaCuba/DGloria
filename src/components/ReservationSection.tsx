@@ -23,13 +23,16 @@ import {
   FileCheck2,
   Sparkles,
   ArrowRight,
+  WifiOff,
 } from 'lucide-react';
 import { ReservationRequest } from '../lib/convex';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { getReservationStatusMeta } from '../utils/reservations';
+import { useOnlineStatus } from '../hooks/useOnlineStatus';
 
 export const ReservationSection: React.FC = () => {
+  const isOnline = useOnlineStatus();
   const createReservation = useMutation(api.reservations.createPublicReservation);
 
   const [activeTab, setActiveTab] = useState<'create' | 'lookup'>('create');
@@ -73,6 +76,11 @@ export const ReservationSection: React.FC = () => {
   const handleCreateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isSubmitting) return;
+
+    if (!isOnline) {
+      setErrorMessage('No hay conexión a internet. Conéctate a una red para registrar tu reservación en tiempo real.');
+      return;
+    }
 
     const trimmedName = formData.fullName.trim();
     const trimmedContact = formData.emailOrPhone.trim();
@@ -427,16 +435,28 @@ export const ReservationSection: React.FC = () => {
                     />
                   </div>
 
-                  <div className="pt-2">
+                  <div className="pt-2 space-y-3">
+                    {!isOnline && (
+                      <div className="p-3 bg-[#121212] border border-[#9B1B30]/40 rounded-lg text-xs text-[#E9E2D6] flex items-center gap-2.5">
+                        <WifiOff className="w-4 h-4 text-[#E3B87C] shrink-0" />
+                        <span>Sin conexión. Conéctate a internet para enviar tu solicitud de reservación.</span>
+                      </div>
+                    )}
+
                     <button
                       type="submit"
-                      disabled={isSubmitting}
+                      disabled={isSubmitting || !isOnline}
                       className="w-full py-4 text-xs font-semibold uppercase tracking-wider text-white bg-[#9B1B30] hover:bg-[#801426] disabled:opacity-50 disabled:cursor-not-allowed transition-colors rounded shadow-lg whitespace-nowrap focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FFFBF2] flex items-center justify-center gap-2"
                     >
                       {isSubmitting ? (
                         <>
                           <Loader2 className="w-4 h-4 animate-spin text-[#FFFBF2]" />
                           <span>Registrando solicitud...</span>
+                        </>
+                      ) : !isOnline ? (
+                        <>
+                          <WifiOff className="w-3.5 h-3.5" />
+                          <span>Requiere Conexión</span>
                         </>
                       ) : (
                         <>
@@ -481,12 +501,28 @@ export const ReservationSection: React.FC = () => {
                       />
                       <button
                         type="submit"
-                        className="px-6 py-3 text-xs font-semibold uppercase tracking-wider text-white bg-[#9B1B30] hover:bg-[#801426] transition-colors rounded shadow-lg flex items-center justify-center gap-2 whitespace-nowrap"
+                        disabled={!isOnline}
+                        className="px-6 py-3 text-xs font-semibold uppercase tracking-wider text-white bg-[#9B1B30] hover:bg-[#801426] disabled:opacity-50 disabled:cursor-not-allowed transition-colors rounded shadow-lg flex items-center justify-center gap-2 whitespace-nowrap"
                       >
-                        <Search className="w-4 h-4" />
-                        <span>Consultar Estado</span>
+                        {isOnline ? (
+                          <>
+                            <Search className="w-4 h-4" />
+                            <span>Consultar Estado</span>
+                          </>
+                        ) : (
+                          <>
+                            <WifiOff className="w-4 h-4" />
+                            <span>Sin Conexión</span>
+                          </>
+                        )}
                       </button>
                     </div>
+                    {!isOnline && (
+                      <p className="text-[11px] text-[#E3B87C] mt-2 flex items-center gap-1.5 font-light">
+                        <WifiOff className="w-3.5 h-3.5 shrink-0" />
+                        <span>La consulta en tiempo real del registro en Convex requiere conexión a internet.</span>
+                      </p>
+                    )}
                   </div>
                 </form>
 

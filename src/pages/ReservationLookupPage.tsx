@@ -21,13 +21,16 @@ import {
   FileCheck2,
   Sparkles,
   ArrowLeft,
+  WifiOff,
 } from 'lucide-react';
 import { useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { ASSETS, BUSINESS_INFO } from '../lib/assets';
 import { getReservationStatusMeta } from '../utils/reservations';
+import { useOnlineStatus } from '../hooks/useOnlineStatus';
 
 export const ReservationLookupPage: React.FC = () => {
+  const isOnline = useOnlineStatus();
   const [lookupInput, setLookupInput] = useState('');
   const [activeQueryCode, setActiveQueryCode] = useState<string | null>(null);
 
@@ -135,19 +138,45 @@ export const ReservationLookupPage: React.FC = () => {
                   />
                   <button
                     type="submit"
-                    className="px-8 py-4 text-xs font-semibold uppercase tracking-wider text-[#FFFBF2] bg-[#9B1B30] hover:bg-[#801426] active:scale-95 transition-all rounded-xl shadow-lg flex items-center justify-center gap-2 whitespace-nowrap"
+                    disabled={!isOnline}
+                    className="px-8 py-4 text-xs font-semibold uppercase tracking-wider text-[#FFFBF2] bg-[#9B1B30] hover:bg-[#801426] disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 transition-all rounded-xl shadow-lg flex items-center justify-center gap-2 whitespace-nowrap"
                   >
-                    <Search className="w-4 h-4" />
-                    <span>Consultar Estado</span>
+                    {isOnline ? (
+                      <>
+                        <Search className="w-4 h-4" />
+                        <span>Consultar Estado</span>
+                      </>
+                    ) : (
+                      <>
+                        <WifiOff className="w-4 h-4" />
+                        <span>Sin Conexión</span>
+                      </>
+                    )}
                   </button>
                 </div>
+                {!isOnline && (
+                  <p className="text-xs text-[#E3B87C] pt-2 flex items-center gap-2 font-light">
+                    <WifiOff className="w-3.5 h-3.5 shrink-0" />
+                    <span>Se requiere conexión a internet para consultar el estado en tiempo real.</span>
+                  </p>
+                )}
               </div>
             </form>
 
             {/* Result Area */}
             {activeQueryCode && (
               <div className="mt-8 pt-8 border-t border-[#E9E2D6]/10">
-                {lookupResult === undefined ? (
+                {!isOnline && lookupResult === undefined ? (
+                  <div className="py-10 text-center space-y-3">
+                    <WifiOff className="w-8 h-8 text-[#E3B87C] mx-auto opacity-80" />
+                    <span className="text-sm text-[#E9E2D6] font-medium block">
+                      Esperando conexión a internet...
+                    </span>
+                    <span className="text-xs text-[#8A8380] block font-light">
+                      La consulta se actualizará automáticamente tan pronto se restablezca la conexión.
+                    </span>
+                  </div>
+                ) : lookupResult === undefined ? (
                   <div className="py-12 text-center space-y-4">
                     <Loader2 className="w-8 h-8 animate-spin text-[#E3B87C] mx-auto" />
                     <span className="text-sm text-[#E9E2D6]/70 block font-light">

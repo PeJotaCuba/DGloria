@@ -5,7 +5,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { ASSETS } from '../lib/assets';
-import { Menu, X, Calendar } from 'lucide-react';
+import { Menu, X, Calendar, Download } from 'lucide-react';
+import { usePWAInstall } from '../hooks/usePWAInstall';
+import { InstallModalIOS } from './InstallModalIOS';
 
 interface NavbarProps {
   onNavigate?: (sectionId: string) => void;
@@ -14,6 +16,14 @@ interface NavbarProps {
 export const Navbar: React.FC<NavbarProps> = ({ onNavigate }) => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const {
+    isInstallable,
+    isInstalled,
+    isIOS,
+    showIOSGuide,
+    setShowIOSGuide,
+    promptInstall,
+  } = usePWAInstall();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -90,8 +100,19 @@ export const Navbar: React.FC<NavbarProps> = ({ onNavigate }) => {
             ))}
           </nav>
 
-          {/* Zone 3: 1 Primary Action */}
+          {/* Zone 3: Actions */}
           <div className="hidden md:flex items-center gap-3 shrink-0">
+            {!isInstalled && (isInstallable || isIOS) && (
+              <button
+                onClick={promptInstall}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold uppercase tracking-wider text-[#E9E2D6] hover:text-[#FFFBF2] bg-[#1E1E1E]/80 hover:bg-[#2A2A2A] border border-[#E9E2D6]/20 hover:border-[#9B1B30]/60 rounded transition-all shadow-sm whitespace-nowrap shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#9B1B30]"
+                title={isIOS ? 'Cómo instalar en iPhone / iPad' : 'Instalar Doña Gloria en tu dispositivo'}
+              >
+                <Download className="w-3.5 h-3.5 text-[#9B1B30]" />
+                <span>Instalar App</span>
+              </button>
+            )}
+
             <a
               href="#reservas"
               onClick={(e) => handleLinkClick(e, '#reservas')}
@@ -104,6 +125,16 @@ export const Navbar: React.FC<NavbarProps> = ({ onNavigate }) => {
 
           {/* Mobile menu trigger */}
           <div className="flex md:hidden items-center gap-2">
+            {!isInstalled && (isInstallable || isIOS) && (
+              <button
+                onClick={promptInstall}
+                className="p-1.5 text-[#E9E2D6] hover:text-[#FFFBF2] bg-[#1E1E1E]/80 border border-[#E9E2D6]/20 rounded transition-colors"
+                title={isIOS ? 'Cómo instalar en iPhone/iPad' : 'Instalar App'}
+                aria-label="Instalar aplicación"
+              >
+                <Download className="w-4 h-4 text-[#9B1B30]" />
+              </button>
+            )}
             <a
               href="#reservas"
               onClick={(e) => handleLinkClick(e, '#reservas')}
@@ -140,6 +171,19 @@ export const Navbar: React.FC<NavbarProps> = ({ onNavigate }) => {
           </nav>
 
           <div className="pt-6 border-t border-[#E9E2D6]/10 flex flex-col gap-3">
+            {!isInstalled && (isInstallable || isIOS) && (
+              <button
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  promptInstall();
+                }}
+                className="w-full flex items-center justify-center gap-2 py-2.5 px-4 text-xs font-semibold uppercase tracking-wider text-[#FFFBF2] bg-[#2A2A2A] hover:bg-[#333333] border border-[#E9E2D6]/20 rounded transition-colors shadow-sm"
+              >
+                <Download className="w-4 h-4 text-[#9B1B30]" />
+                <span>{isIOS ? 'Cómo instalar en iPhone / iPad' : 'Instalar Doña Gloria'}</span>
+              </button>
+            )}
+
             <a
               href="#reservas"
               onClick={(e) => handleLinkClick(e, '#reservas')}
@@ -153,6 +197,12 @@ export const Navbar: React.FC<NavbarProps> = ({ onNavigate }) => {
           </div>
         </div>
       )}
+
+      {/* iOS Safari Installation Guide Modal */}
+      <InstallModalIOS
+        isOpen={showIOSGuide}
+        onClose={() => setShowIOSGuide(false)}
+      />
     </>
   );
 };

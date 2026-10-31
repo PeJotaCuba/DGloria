@@ -43,3 +43,27 @@
 .hairline-divider {
   border-color: rgba(233, 226, 214, 0.15);
 }
+
+/* Standalone PWA adjustments & Safe Area insets */
+@supports (padding-top: env(safe-area-inset-top)) {
+  .safe-area-pt {
+    padding-top: env(safe-area-inset-top);
+  }
+  .safe-area-pb {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .safe-area-pl {
+    padding-left: env(safe-area-inset-left);
+  }
+  .safe-area-pr {
+    padding-right: env(safe-area-inset-right);
+  }
+}
+
+@media all and (display-mode: standalone) {
+  html, body {
+    overscroll-behavior-y: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+

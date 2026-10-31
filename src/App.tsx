@@ -10,6 +10,9 @@ import { ContactSection } from './components/ContactSection';
 import { Footer } from './components/Footer';
 import { MenuPage } from './pages/MenuPage';
 import { ReservationLookupPage } from './pages/ReservationLookupPage';
+import { OfflineIndicator } from './components/OfflineIndicator';
+import { PWAInstallBanner } from './components/PWAInstallBanner';
+import { PWAUpdatePrompt } from './components/PWAUpdatePrompt';
 
 export default function App() {
   const [currentPath, setCurrentPath] = useState<string>(() => window.location.pathname);
@@ -28,17 +31,31 @@ export default function App() {
 
   // Si la ruta es /menu o /menu/, renderizar la página exclusiva del menú
   if (currentPath === '/menu' || currentPath === '/menu/') {
-    return <MenuPage />;
+    return (
+      <div className="safe-area-pt safe-area-pb">
+        <MenuPage />
+        <PWAInstallBanner />
+        <PWAUpdatePrompt />
+        <OfflineIndicator />
+      </div>
+    );
   }
 
   // Si la ruta es /consulta o /consulta/, renderizar la página de búsqueda de reservaciones
   if (currentPath === '/consulta' || currentPath === '/consulta/') {
-    return <ReservationLookupPage />;
+    return (
+      <div className="safe-area-pt safe-area-pb">
+        <ReservationLookupPage />
+        <PWAInstallBanner />
+        <PWAUpdatePrompt />
+        <OfflineIndicator />
+      </div>
+    );
   }
 
   // Página de inicio (Landing Page)
   return (
-    <div className="relative min-h-screen bg-[#1E1E1E] text-[#FFFBF2] overflow-x-hidden selection:bg-[#9B1B30] selection:text-[#FFFBF2]">
+    <div className="relative min-h-screen bg-[#1E1E1E] text-[#FFFBF2] overflow-x-hidden selection:bg-[#9B1B30] selection:text-[#FFFBF2] safe-area-pb">
       {/* Permanent Immersive Photographic Background with Smooth Scroll Zoom */}
       <ImmersiveBackground
         progress={progress}
@@ -68,6 +85,9 @@ export default function App() {
 
       {/* 6. Pie de Página */}
       <Footer />
+      <PWAInstallBanner />
+      <PWAUpdatePrompt />
+      <OfflineIndicator />
     </div>
   );
 }

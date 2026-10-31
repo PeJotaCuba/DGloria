@@ -5,9 +5,20 @@
 
 import React from 'react';
 import { ASSETS } from '../lib/assets';
-import { ArrowUp } from 'lucide-react';
+import { ArrowUp, Download } from 'lucide-react';
+import { usePWAInstall } from '../hooks/usePWAInstall';
+import { InstallModalIOS } from './InstallModalIOS';
 
 export const Footer: React.FC = () => {
+  const {
+    isInstallable,
+    isInstalled,
+    isIOS,
+    showIOSGuide,
+    setShowIOSGuide,
+    promptInstall,
+  } = usePWAInstall();
+
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -55,6 +66,16 @@ export const Footer: React.FC = () => {
             <a href="#contacto" className="hover:text-[#FFFBF2] transition-colors">
               Contacto
             </a>
+            {!isInstalled && (isInstallable || isIOS) && (
+              <button
+                onClick={promptInstall}
+                className="hover:text-[#FFFBF2] transition-colors inline-flex items-center gap-1.5 text-[#9B1B30] font-semibold"
+                title={isIOS ? 'Cómo instalar en iOS' : 'Instalar aplicación'}
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Instalar App</span>
+              </button>
+            )}
           </nav>
 
           {/* Back to top */}
@@ -68,6 +89,12 @@ export const Footer: React.FC = () => {
             </button>
           </div>
         </div>
+
+        {/* iOS Guide Modal */}
+        <InstallModalIOS
+          isOpen={showIOSGuide}
+          onClose={() => setShowIOSGuide(false)}
+        />
 
         {/* Bottom copyright & agency attribution */}
         <div className="pt-8 flex flex-col items-center justify-center gap-3 text-xs text-[#8A8380]">
