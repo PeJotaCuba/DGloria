@@ -87,7 +87,7 @@ export const HeroSection: React.FC = () => {
             <span className="block font-serif text-lg sm:text-xl font-bold text-[#FFFBF2] mb-3">Horario</span>
             {groupedSchedule.length > 0 ? (
               <div className="flex flex-col gap-4 items-center">
-                {groupedSchedule.map((group, gIdx) => (
+                {groupedSchedule.filter(group => group.enabled).map((group, gIdx) => (
                   <div key={gIdx} className="w-full max-w-[200px] mx-auto">
                     <span className="block text-[10px] font-bold text-[#E3B87C] uppercase tracking-widest mb-1.5">
                       {group.dayRangeLabel}

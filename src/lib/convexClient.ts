@@ -14,6 +14,7 @@ export interface ConvexDish {
   name: string;
   description: string;
   category: string;
+  portion?: string;
   price?: number | string;
   priceCup?: number;
   priceFormatted?: string;
@@ -25,6 +26,29 @@ export interface ConvexDish {
   displayOrder: number;
   createdAt?: number;
   updatedAt?: number;
+}
+
+export const OFFICIAL_CATEGORIES = [
+  "ENTRANTES",
+  "PLATOS FUERTES",
+  "HAMBURGUESAS",
+  "PASTAS",
+  "ESPECIAL",
+  "BEBIDAS",
+  "CAFÉS",
+  "BEBIDAS SIN ALCOHOL",
+  "OTROS",
+  "COCTELERÍA"
+];
+
+/**
+ * Normaliza el nombre de la categoría para que coincida exactamente con la lista oficial.
+ */
+export function getOfficialCategoryName(cat?: string): string {
+  if (!cat) return "OTROS";
+  const normalized = cat.trim().toUpperCase();
+  const match = OFFICIAL_CATEGORIES.find(c => c === normalized);
+  return match || normalized;
 }
 
 export interface ScheduleSession {
