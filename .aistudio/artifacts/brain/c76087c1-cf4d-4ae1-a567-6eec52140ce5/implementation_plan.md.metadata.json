@@ -1,6 +1,6 @@
 {
-  "summary":  "Plan para verificar y asegurar la conexión perfecta de la consulta de reservaciones con el backend Convex, garantizando la visualización de los 6 estados oficiales.",
-  "updatedAt":  "2026-10-30T18:15:16.298116758Z",
+  "summary":  "Implementation plan for unifying and detailing the Revisar and Presentar order views in Doña Gloria.",
+  "updatedAt":  "2026-11-01T12:45:35.404048949Z",
   "requestFeedback":  true,
   "userFacing":  true
 }

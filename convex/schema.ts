@@ -7,6 +7,7 @@ export default defineSchema(
     menu_dishes: defineTable({
       name: v.string(),
       description: v.string(),
+      portion: v.optional(v.string()),
       price: v.optional(v.union(v.number(), v.string())),
       priceCup: v.optional(v.number()),
       priceFormatted: v.optional(v.string()),
@@ -89,6 +90,7 @@ export default defineSchema(
       code: v.optional(v.string()),
       name: v.string(),
       description: v.string(),
+      portion: v.optional(v.string()),
       price: v.optional(v.union(v.number(), v.string())),
       priceCup: v.optional(v.number()),
       priceFormatted: v.optional(v.string()),

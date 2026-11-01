@@ -57,7 +57,7 @@ export const getPublishedDishes = query({
     // Ordenar por displayOrder de menor a mayor
     dishes.sort((a, b) => a.displayOrder - b.displayOrder);
 
-    // Resolver URLs de imágenes para consumo directo en la web
+    // Resolver URLs de imágenes y preservar el campo portion (gramaje/volumen)
     const resolvedDishes = await Promise.all(
       dishes.map(async (dish) => {
         const resolvedImage = await resolveDishImageUrl(ctx, dish.imageId, dish.imageUrl);
@@ -67,6 +67,7 @@ export const getPublishedDishes = query({
           name: dish.name,
           description: dish.description,
           category: dish.category,
+          portion: (dish as any).portion,
           price: (dish as any).price,
           priceCup: (dish as any).priceCup,
           priceFormatted: (dish as any).priceFormatted,
@@ -115,6 +116,7 @@ export const getFeaturedDishes = query({
           name: dish.name,
           description: dish.description,
           category: dish.category,
+          portion: (dish as any).portion,
           price: (dish as any).price,
           priceCup: (dish as any).priceCup,
           priceFormatted: (dish as any).priceFormatted,
@@ -216,6 +218,7 @@ export const createDish = mutation({
     name: v.string(),
     description: v.string(),
     category: v.string(),
+    portion: v.optional(v.string()),
     price: v.optional(v.union(v.number(), v.string())),
     priceCup: v.optional(v.number()),
     priceFormatted: v.optional(v.string()),
@@ -245,6 +248,7 @@ export const createDish = mutation({
       name: args.name.trim(),
       description: args.description.trim(),
       category: args.category.trim(),
+      portion: args.portion?.trim(),
       price: args.price,
       priceCup: args.priceCup,
       priceFormatted: args.priceFormatted,
@@ -272,6 +276,7 @@ export const updateDish = mutation({
     name: v.optional(v.string()),
     description: v.optional(v.string()),
     category: v.optional(v.string()),
+    portion: v.optional(v.string()),
     price: v.optional(v.union(v.number(), v.string())),
     priceCup: v.optional(v.number()),
     priceFormatted: v.optional(v.string()),
@@ -297,6 +302,7 @@ export const updateDish = mutation({
     if (args.name !== undefined) updates.name = args.name.trim();
     if (args.description !== undefined) updates.description = args.description.trim();
     if (args.category !== undefined) updates.category = args.category.trim();
+    if (args.portion !== undefined) (updates as any).portion = args.portion.trim();
     if (args.price !== undefined) (updates as any).price = args.price;
     if (args.priceCup !== undefined) (updates as any).priceCup = args.priceCup;
     if (args.priceFormatted !== undefined) (updates as any).priceFormatted = args.priceFormatted;

@@ -4,11 +4,12 @@
  */
 
 import React, { useState } from 'react';
-import { Eye, X, Utensils, ArrowRight, Plus, Minus, ShoppingBag, Phone, ChevronRight, Trash2, ArrowLeft } from 'lucide-react';
+import { Eye, X, Utensils, ArrowRight, Plus, Minus, ShoppingBag, Phone, ChevronRight, Trash2, ArrowLeft, FileText } from 'lucide-react';
 import { useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { ConvexDish, formatDishPrice, getOfficialCategoryName, OFFICIAL_CATEGORIES } from '../lib/convexClient';
 import { usePersonalOrder } from '../hooks/usePersonalOrder';
+import { PersonalOrderModal } from './PersonalOrderModal';
 import { WHATSAPP_URL_NUMBER } from '../lib/assets';
 
 export const MenuSection: React.FC = () => {
@@ -17,7 +18,16 @@ export const MenuSection: React.FC = () => {
   const [showSummary, setShowSummary] = useState(false);
   const [showWaiterView, setShowWaiterView] = useState(false);
   
-  const { orderItems, updateQuantity, clearOrder, totalUnits, totalPrice } = usePersonalOrder();
+  const {
+    orderItems,
+    presentedOrder,
+    updateQuantity,
+    clearOrder,
+    presentOrder,
+    closePresentedOrder,
+    totalUnits,
+    totalPrice,
+  } = usePersonalOrder();
 
   // Consulta reactiva en tiempo real a los platos destacados desde Convex
   const featuredQuery = useQuery(api.menuDishes.getFeaturedDishes);
@@ -366,174 +376,53 @@ export const MenuSection: React.FC = () => {
         </div>
       )}
 
-      {/* Detailed Order Modals Consistency */}
-      {showSummary && (
-        <div
-          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/85 backdrop-blur-md p-4 animate-in fade-in duration-300"
-          onClick={() => setShowSummary(false)}
-        >
-           <div 
-             className="bg-[#FFFBF2] text-[#1E1E1E] w-full max-w-2xl max-h-[90vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-[#EADFCB]"
-             onClick={e => e.stopPropagation()}
-           >
-              <div className="p-6 border-b border-[#EADFCB] flex items-center justify-between bg-white/50">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-[#9B1B30]/10 rounded-lg text-[#9B1B30]">
-                    <ShoppingBag className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <h3 className="font-serif text-xl font-bold">Revisar Pedido</h3>
-                    <p className="text-[10px] text-[#8A8380] uppercase tracking-widest font-bold">Edita cantidades y confirma tu selección</p>
-                  </div>
-                </div>
-                <button onClick={() => setShowSummary(false)} className="p-2 hover:bg-black/5 rounded-full transition-colors text-[#8A8380]">
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
+      {/* Unified Personal Order Modal */}
+      <PersonalOrderModal
+        isOpen={showSummary || showWaiterView}
+        initialMode={showWaiterView ? 'present' : 'review'}
+        onClose={() => {
+          setShowSummary(false);
+          setShowWaiterView(false);
+        }}
+        orderItems={orderItems}
+        presentedOrder={presentedOrder}
+        updateQuantity={updateQuantity}
+        clearOrder={clearOrder}
+        presentOrder={presentOrder}
+        closePresentedOrder={closePresentedOrder}
+        totalUnits={totalUnits}
+        totalPrice={totalPrice}
+      />
 
-              <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-8 bg-[#FFFBF2]">
-                {orderItems.length === 0 ? (
-                  <div className="text-center py-20">
-                    <ShoppingBag className="w-16 h-16 text-[#EADFCB] mx-auto mb-4 opacity-50" />
-                    <p className="text-[#8A8380] font-medium">Aún no has agregado nada al pedido.</p>
-                  </div>
-                ) : (
-                  OFFICIAL_CATEGORIES.filter(cat => orderItems.some(i => i.category.trim().toLowerCase() === cat.trim().toLowerCase())).map(category => (
-                    <div key={category} className="space-y-4">
-                      <h4 className="text-[11px] font-bold tracking-[0.25em] text-[#9B1B30] uppercase border-b border-[#EADFCB] pb-1.5 opacity-80">{category}</h4>
-                      <div className="space-y-3">
-                        {orderItems.filter(i => i.category.trim().toLowerCase() === category.trim().toLowerCase()).map(item => {
-                          const unitPrice = typeof item.priceCup === 'number' ? item.priceCup : 0;
-                          const lineTotal = unitPrice * item.quantity;
-                          
-                          return (
-                            <div key={item._id} className="flex items-center gap-4 bg-white/40 p-3 rounded-xl border border-[#EADFCB]/40 hover:border-[#EADFCB] transition-all group">
-                               <div className="flex items-center gap-4 flex-1 min-w-0">
-                                 <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-lg bg-[#EFE6D5] overflow-hidden shrink-0 border border-[#EADFCB]/60 shadow-sm">
-                                   {item.imageUrl || item.imageId ? (
-                                     <img src={item.imageUrl || item.imageId} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" alt={item.name} />
-                                   ) : (
-                                     <div className="w-full h-full flex items-center justify-center text-[#9B1B30]/30">
-                                       <Utensils className="w-8 h-8" />
-                                     </div>
-                                   )}
-                                 </div>
-                                 <div className="flex-1 min-w-0">
-                                   <p className="font-serif font-bold text-base sm:text-lg leading-tight text-[#1E1E1E] truncate">{item.name}</p>
-                                   {item.portion && (
-                                     <p className="text-[10px] sm:text-xs text-[#8A8380] italic mt-0.5">{item.portion}</p>
-                                   )}
-                                   <p className="text-[10px] sm:text-xs font-mono font-medium text-[#9B1B30] mt-1.5 bg-[#9B1B30]/5 inline-block px-2 py-0.5 rounded uppercase tracking-wide">
-                                     Unit: ${unitPrice.toLocaleString()} CUP
-                                   </p>
-                                 </div>
-                               </div>
-                               <div className="flex flex-col items-end gap-3 shrink-0">
-                                 <div className="flex items-center bg-[#1E1E1E] rounded-lg p-0.5 shadow-sm">
-                                   <button onClick={() => updateQuantity(item, -1)} className="p-1.5 text-white hover:text-[#9B1B30] transition-colors"><Minus className="w-4 h-4" /></button>
-                                   <span className="px-3 font-mono font-bold text-white text-sm min-w-[2.5rem] text-center">{item.quantity}</span>
-                                   <button onClick={() => updateQuantity(item, 1)} className="p-1.5 text-white hover:text-[#9B1B30] transition-colors"><Plus className="w-4 h-4" /></button>
-                                 </div>
-                                 <div className="text-right">
-                                   <p className="font-mono text-base sm:text-lg font-bold text-[#1E1E1E] leading-none">${lineTotal.toLocaleString()}</p>
-                                   <button onClick={() => updateQuantity(item, -item.quantity)} className="text-[9px] uppercase font-black text-[#8A8380] hover:text-red-600 flex items-center gap-1 mt-1.5 transition-colors tracking-tighter">
-                                     <Trash2 className="w-3 h-3" />
-                                     <span>Quitar</span>
-                                   </button>
-                                 </div>
-                               </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  ))
-                )}
+      {/* Floating Presented Order Badge (if active and no draft order) */}
+      {presentedOrder && totalUnits === 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 w-[calc(100%-2rem)] max-w-md animate-in slide-in-from-bottom-8 duration-500">
+          <div className="bg-[#1E1E1E] text-[#FFFBF2] rounded-2xl shadow-2xl border border-[#E3B87C]/30 p-3.5 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-[#9B1B30]/20 rounded-xl flex items-center justify-center border border-[#9B1B30]/40 text-[#E3B87C]">
+                <FileText className="w-5 h-5" />
               </div>
-
-              {orderItems.length > 0 && (
-                <div className="p-6 bg-white border-t border-[#EADFCB]">
-                  <div className="flex justify-between items-center mb-6">
-                    <div>
-                      <span className="text-[10px] uppercase tracking-[0.2em] text-[#8A8380] font-black">Total Estimado</span>
-                      <p className="text-[10px] text-[#8A8380] mt-0.5 uppercase tracking-wide font-medium">{totalUnits} platos seleccionados</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-serif text-3xl font-bold text-[#1E1E1E] leading-none tracking-tighter">${totalPrice.toLocaleString()} <span className="text-xs font-sans text-[#9B1B30]">CUP</span></p>
-                    </div>
-                  </div>
-                  <div className="flex gap-3">
-                    <button onClick={clearOrder} className="flex-1 py-4 text-[10px] font-bold uppercase tracking-[0.2em] text-[#8A8380] border border-[#EADFCB] rounded-xl">Limpiar</button>
-                    <button onClick={() => { setShowSummary(false); setShowWaiterView(true); }} className="flex-[3] py-4 bg-[#9B1B30] text-[#FFFBF2] rounded-xl text-xs font-bold uppercase tracking-[0.2em]">Presentar Pedido</button>
-                  </div>
-                </div>
-              )}
-           </div>
+              <div>
+                <p className="text-[10px] uppercase tracking-widest text-[#E3B87C] font-bold">
+                  Pedido Presentado Activo
+                </p>
+                <p className="text-xs text-[#E9E2D6]/80 font-mono">
+                  {presentedOrder.totalUnits} platos — ${presentedOrder.totalPrice.toLocaleString()} CUP
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => setShowWaiterView(true)}
+              className="px-4 py-2.5 bg-[#9B1B30] hover:bg-[#801426] text-[#FFFBF2] rounded-xl text-xs font-bold uppercase tracking-wider shadow-md transition-all flex items-center gap-1.5 shrink-0"
+            >
+              <span>Ver Pedido</span>
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       )}
 
-      {showWaiterView && (
-        <div className="fixed inset-0 z-[70] bg-[#1E1E1E] flex flex-col animate-in fade-in duration-300 overflow-hidden">
-           <header className="p-6 border-b border-white/10 flex items-center justify-between shrink-0 bg-black/40 backdrop-blur-sm">
-             <button onClick={() => setShowWaiterView(false)} className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.25em] text-[#8A8380]"><ArrowLeft className="w-4 h-4" /><span>Regresar</span></button>
-             <div className="text-center">
-               <h3 className="font-serif text-xl sm:text-2xl font-bold text-[#FFFBF2]">Resumen del Pedido</h3>
-               <p className="text-[10px] text-[#E3B87C] uppercase tracking-[0.2em] font-bold mt-0.5">Presenta esta pantalla al dependiente</p>
-             </div>
-             <div className="w-20 hidden sm:block" />
-           </header>
-
-           <div className="flex-1 overflow-y-auto p-4 sm:p-10">
-              <div className="max-w-3xl mx-auto space-y-12 pb-24">
-                 {OFFICIAL_CATEGORIES.filter(cat => orderItems.some(i => i.category.trim().toLowerCase() === cat.trim().toLowerCase())).map(category => (
-                    <div key={category} className="space-y-6">
-                       <h4 className="text-[11px] font-bold tracking-[0.3em] text-[#9B1B30] uppercase border-l-4 border-[#9B1B30] pl-4">{category}</h4>
-                       <div className="grid grid-cols-1 gap-4">
-                          {orderItems.filter(i => i.category.trim().toLowerCase() === category.trim().toLowerCase()).map(item => {
-                            const unitPrice = typeof item.priceCup === 'number' ? item.priceCup : 0;
-                            const lineTotal = unitPrice * item.quantity;
-                            return (
-                               <div key={item._id} className="bg-white/5 rounded-2xl p-4 sm:p-5 flex items-center gap-5 border border-white/10">
-                                  <div className="flex items-center gap-5 flex-1 min-w-0">
-                                     <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-xl bg-black/40 overflow-hidden shrink-0 border border-white/5">
-                                        {item.imageUrl || item.imageId ? <img src={item.imageUrl || item.imageId} className="w-full h-full object-cover opacity-90" alt={item.name} /> : <div className="w-full h-full flex items-center justify-center text-white/10"><Utensils className="w-10 h-10" /></div>}
-                                     </div>
-                                     <div className="flex-1 min-w-0">
-                                        <h5 className="font-serif font-bold text-lg sm:text-2xl text-white leading-tight truncate">{item.name}</h5>
-                                        {item.portion && <p className="text-[11px] sm:text-xs text-[#8A8380] uppercase tracking-wider mt-1 font-medium">{item.portion}</p>}
-                                        <p className="text-[10px] sm:text-xs font-mono font-semibold text-[#E3B87C] mt-2 inline-flex items-center gap-1.5 bg-white/5 px-3 py-1 rounded-full"><span>Precio:</span><span className="text-white">${unitPrice.toLocaleString()} CUP</span></p>
-                                     </div>
-                                  </div>
-                                  <div className="text-right shrink-0 border-l border-white/10 pl-6 ml-1">
-                                     <div className="flex flex-col items-end">
-                                        <div className="flex items-baseline gap-1.5 mb-1"><span className="text-[#8A8380] text-xs font-bold uppercase tracking-widest">Cant.</span><span className="text-4xl sm:text-5xl font-serif font-black text-[#9B1B30]">{item.quantity}</span></div>
-                                        <p className="font-mono text-lg sm:text-2xl font-bold text-white tracking-tighter">${lineTotal.toLocaleString()}</p>
-                                     </div>
-                                  </div>
-                               </div>
-                            );
-                          })}
-                       </div>
-                    </div>
-                 ))}
-                 <div className="pt-16 border-t border-white/10 mt-12 text-center">
-                    <p className="text-[#8A8380] text-[10px] uppercase tracking-[0.3em] font-black mb-4">Importe Total del Pedido</p>
-                    <div className="inline-block bg-[#9B1B30] rounded-[2.5rem] px-12 py-10 shadow-2xl border border-white/10">
-                       <p className="font-serif text-6xl sm:text-7xl font-black text-white leading-none tracking-tighter">${totalPrice.toLocaleString()}</p>
-                       <p className="text-sm sm:text-base font-sans font-bold text-[#E3B87C] mt-4 uppercase tracking-[0.25em]">Pesos Cubanos (CUP)</p>
-                    </div>
-                 </div>
-              </div>
-           </div>
-
-           <footer className="p-6 bg-black/60 border-t border-white/10 backdrop-blur-md shrink-0 flex items-center justify-center gap-4">
-             <button onClick={() => setShowWaiterView(false)} className="flex-1 max-w-sm py-4.5 bg-white/5 text-white border border-white/10 rounded-2xl text-[10px] font-bold uppercase tracking-[0.2em]">Regresar</button>
-             <button onClick={() => { clearOrder(); setShowWaiterView(false); }} className="flex-1 max-w-sm py-4.5 bg-white text-[#1E1E1E] rounded-2xl text-[10px] font-black uppercase tracking-[0.2em]">Finalizar</button>
-           </footer>
-        </div>
-      )}
-
-      {/* Floating Order Bar Consistency */}
+      {/* Floating Active Draft Order Bar */}
       {totalUnits > 0 && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 w-[calc(100%-2rem)] max-w-xl animate-in slide-in-from-bottom-8 duration-500">
           <div className="bg-[#1E1E1E] text-[#FFFBF2] rounded-2xl shadow-2xl border border-white/10 p-4 flex items-center justify-between overflow-hidden relative">
