@@ -8,6 +8,7 @@ export const PWAUpdatePrompt: React.FC = () => {
     needRefresh: [needRefresh, setNeedRefresh],
     updateServiceWorker,
   } = useRegisterSW({
+    immediate: true,
     onRegistered(r) {
       // Periodic check for SW update (e.g., every 60 minutes)
       if (r) {

@@ -27,8 +27,7 @@ export function checkIsStandalone(): boolean {
   if (typeof window === 'undefined') return false;
   const isDisplayStandalone = window.matchMedia('(display-mode: standalone)').matches;
   const isNavigatorStandalone = (window.navigator as unknown as { standalone?: boolean }).standalone === true;
-  const isAndroidReferrer = typeof document !== 'undefined' && document.referrer.includes('android-app://');
-  return isDisplayStandalone || isNavigatorStandalone || isAndroidReferrer;
+  return isDisplayStandalone || isNavigatorStandalone;
 }
 
 /**
@@ -119,10 +118,34 @@ export function usePWAInstall() {
    * - En iOS, abre el modal con instrucciones guiadas.
    */
   const promptInstall = useCallback(async (): Promise<'accepted' | 'dismissed' | 'ios_guide' | 'unavailable'> => {
-    if (deferredPrompt) {
+    let promptEvent = deferredPrompt || (typeof window !== 'undefined' ? window.__pwaInstallPrompt : null);
+
+    // Si aún no está listo el evento nativo en Android/Chrome, esperar hasta 1500ms
+    if (!promptEvent && !isIOS && typeof window !== 'undefined') {
+      promptEvent = await new Promise<BeforeInstallPromptEvent | null>((resolve) => {
+        let resolved = false;
+        const handler = (e: Event) => {
+          if (!resolved) {
+            resolved = true;
+            window.removeEventListener('beforeinstallprompt', handler);
+            resolve(e as BeforeInstallPromptEvent);
+          }
+        };
+        window.addEventListener('beforeinstallprompt', handler);
+        setTimeout(() => {
+          if (!resolved) {
+            resolved = true;
+            window.removeEventListener('beforeinstallprompt', handler);
+            resolve(window.__pwaInstallPrompt || null);
+          }
+        }, 1500);
+      });
+    }
+
+    if (promptEvent) {
       try {
-        await deferredPrompt.prompt();
-        const choice = await deferredPrompt.userChoice;
+        await promptEvent.prompt();
+        const choice = await promptEvent.userChoice;
         if (choice.outcome === 'accepted') {
           setIsInstalled(true);
           setDeferredPrompt(null);
@@ -157,12 +180,12 @@ export function usePWAInstall() {
     }
   }, []);
 
-  // Es instalable si tenemos el prompt nativo O estamos en iOS (no standalone)
-  const isInstallable = (!isInstalled && (!!deferredPrompt || isIOS));
+  const hasPrompt = !!deferredPrompt || (typeof window !== 'undefined' && !!window.__pwaInstallPrompt);
+  const isInstallable = !isInstalled && (hasPrompt || isIOS);
 
   return {
     isInstallable,
-    hasNativePrompt: !!deferredPrompt,
+    hasNativePrompt: hasPrompt,
     isInstalled,
     isIOS,
     isDismissed,
