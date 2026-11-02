@@ -146,6 +146,16 @@ export function formatDayRangeLabel(days: DayScheduleRecord[]): string {
  * Agrupa días consecutivos ordenados por día de la semana (1..7).
  * Separa inmediatamente cualquier día con horarios de sesión o estado diferente.
  */
+
+/**
+ * Determina si una hora es nocturna (a partir de las 6 PM).
+ */
+export function isNightTime(timeStr?: string): boolean {
+  if (!timeStr) return false;
+  const hour = parseInt(timeStr.split(':')[0], 10);
+  return hour >= 18 || hour < 6;
+}
+
 export function groupWeeklyScheduleStrict(weeklySchedule: DayScheduleRecord[]): DayScheduleGroup[] {
   if (!weeklySchedule || weeklySchedule.length === 0) return [];
 

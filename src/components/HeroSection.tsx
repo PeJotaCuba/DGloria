@@ -8,7 +8,7 @@ import { ASSETS } from '../lib/assets';
 import { ArrowDown, UtensilsCrossed, Calendar, Sun, Moon } from 'lucide-react';
 import { useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
-import { groupWeeklyScheduleStrict } from '../utils/schedule';
+import { groupWeeklyScheduleStrict, isNightTime } from '../utils/schedule';
 
 export const HeroSection: React.FC = () => {
   const openingHours = useQuery(api.shift.getPublicOpeningHours, {});
@@ -95,10 +95,11 @@ export const HeroSection: React.FC = () => {
                     {group.enabled && group.sessions.length > 0 ? (
                       <div className="flex flex-col gap-1.5">
                         {group.sessions.map((session, sIdx) => {
-                          const Icon = sIdx === 0 ? Sun : Moon;
+                          const isNight = isNightTime(session.openTime);
+                          const Icon = isNight ? Moon : Sun;
                           return (
                             <div key={sIdx} className="flex items-center justify-center gap-2 text-[11px] text-[#E9E2D6] font-mono leading-none py-1 px-2 rounded bg-white/5 border border-white/10">
-                              <Icon className={`w-3 h-3 shrink-0 ${sIdx === 0 ? 'text-amber-400' : 'text-blue-300'}`} />
+                              <Icon className={`w-3 h-3 shrink-0 ${isNight ? 'text-blue-300' : 'text-amber-400'}`} />
                               <span>{session.openTimeFormatted} – {session.closeTimeFormatted}</span>
                             </div>
                           );

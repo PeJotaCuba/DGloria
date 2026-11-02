@@ -4,7 +4,7 @@ import { useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { ConvexDish, formatDishPrice, OFFICIAL_CATEGORIES, getOfficialCategoryName } from '../lib/convexClient';
 import { ASSETS, BUSINESS_INFO, WHATSAPP_URL_NUMBER } from '../lib/assets';
-import { groupWeeklyScheduleStrict } from '../utils/schedule';
+import { groupWeeklyScheduleStrict, isNightTime } from '../utils/schedule';
 import { usePersonalOrder } from '../hooks/usePersonalOrder';
 import { PersonalOrderModal } from '../components/PersonalOrderModal';
 
@@ -159,10 +159,11 @@ export const MenuPage: React.FC = () => {
                       <div className="grid grid-cols-1 xs:grid-cols-2 gap-2">
                         {group.enabled && group.sessions.length > 0 ? (
                           group.sessions.map((session, sIdx) => {
-                            const Icon = sIdx === 0 ? Sun : Moon;
+                            const isNight = isNightTime(session.openTime);
+                            const Icon = isNight ? Moon : Sun;
                             return (
                               <div key={sIdx} className="flex items-center gap-2 text-[11px] font-mono bg-black/20 py-1.5 px-2 rounded-lg">
-                                <Icon className={`w-3 h-3 shrink-0 ${sIdx === 0 ? 'text-amber-400' : 'text-blue-300'}`} />
+                                <Icon className={`w-3 h-3 shrink-0 ${isNight ? 'text-blue-300' : 'text-amber-400'}`} />
                                 <span className="text-[#E9E2D6]">{session.openTimeFormatted} – {session.closeTimeFormatted}</span>
                               </div>
                             );
