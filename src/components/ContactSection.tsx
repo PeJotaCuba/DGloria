@@ -8,7 +8,7 @@ import { MapPin, Clock, MessageSquare, Send, Check, Sun, Moon } from 'lucide-rea
 import { BUSINESS_INFO, WHATSAPP_URL_NUMBER } from '../lib/assets';
 import { useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
-import { groupWeeklyScheduleStrict } from '../utils/schedule';
+import { groupWeeklyScheduleStrict, isNightTime } from '../utils/schedule';
 
 export const ContactSection: React.FC = () => {
   const openingHours = useQuery(api.shift.getPublicOpeningHours, {});
@@ -106,7 +106,7 @@ export const ContactSection: React.FC = () => {
                 Atención en Bar & Terraza
               </h3>
               <p className="text-xs text-[#E9E2D6]/80 font-light leading-relaxed mb-4">
-                Atención para almuerzos y servicio continuado de bar y cenas en terraza.
+                Atención para servicio continuado de bar y cenas en terraza.
               </p>
             </div>
             <div className="pt-4 border-t border-[#E9E2D6]/10 space-y-5 max-h-[350px] overflow-y-auto pr-1">
@@ -126,17 +126,19 @@ export const ContactSection: React.FC = () => {
                     {group.enabled && group.sessions.length > 0 ? (
                       <div className="grid grid-cols-1 gap-2">
                         {group.sessions.map((session, sIdx) => {
-                          const Icon = sIdx === 0 ? Sun : Moon;
-                          const iconColor = sIdx === 0 ? 'text-amber-400' : 'text-blue-300';
-                          const bgColor = sIdx === 0 ? 'bg-amber-400/5' : 'bg-blue-400/5';
-                          const borderColor = sIdx === 0 ? 'border-amber-400/20' : 'border-blue-400/20';
+                          const isNight = isNightTime(session.openTime);
+                          const Icon = isNight ? Moon : Sun;
+                          const iconColor = isNight ? 'text-blue-300' : 'text-amber-400';
+                          const bgColor = isNight ? 'bg-blue-400/5' : 'bg-amber-400/5';
+                          const borderColor = isNight ? 'border-blue-400/20' : 'border-amber-400/20';
+                          const label = isNight ? 'Bar & Cena' : 'Almuerzo';
                           
                           return (
                             <div key={sIdx} className={`flex items-center justify-between p-2.5 rounded border ${bgColor} ${borderColor}`}>
                               <div className="flex items-center gap-2.5">
                                 <Icon className={`w-4 h-4 shrink-0 ${iconColor}`} />
                                 <span className="text-[10px] uppercase font-bold text-[#8A8380] tracking-wider">
-                                  {sIdx === 0 ? 'Almuerzo' : 'Bar & Cena'}
+                                  {label}
                                 </span>
                               </div>
                               <span className="text-xs font-mono text-[#FFFBF2] font-semibold">
