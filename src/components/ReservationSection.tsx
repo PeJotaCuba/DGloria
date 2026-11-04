@@ -528,7 +528,7 @@ export const ReservationSection: React.FC = () => {
 
                 {/* Lookup Results Display */}
                 {activeQueryCode && (
-                  <div className="pt-4 border-t border-[#E9E2D6]/15">
+                  <div className="pt-4 border-t border-[#E9E2D6]/15" key={`lookup-result-${activeQueryCode}`}>
                     {lookupResult === undefined ? (
                       <div className="py-8 text-center space-y-3">
                         <Loader2 className="w-6 h-6 animate-spin text-[#E3B87C] mx-auto" />
@@ -583,9 +583,14 @@ export const ReservationSection: React.FC = () => {
 
                             {/* Status Explanation */}
                             <div className="space-y-2">
-                              <h4 className="font-serif text-lg font-bold text-[#FFFBF2]">
-                                {statusMeta.title}
-                              </h4>
+                              <div className="flex items-center justify-between">
+                                <h4 className="font-serif text-lg font-bold text-[#FFFBF2]">
+                                  {statusMeta.title}
+                                </h4>
+                                <span className="text-[9px] text-[#8A8380] font-mono">
+                                  Actualizado: {new Date(lookupResult.updatedAt).toLocaleTimeString()}
+                                </span>
+                              </div>
                               <p className="text-xs text-[#E9E2D6]/90 font-light leading-relaxed">
                                 {statusMeta.desc}
                               </p>
