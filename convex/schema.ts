@@ -336,7 +336,8 @@ export default defineSchema({
     .index("by_status_and_date", ["status", "date"])
     .index("by_status_and_createdAt", ["status", "createdAt"])
     .index("by_customer", ["customerId"])
-    .index("by_source", ["source"]),
+    .index("by_source", ["source"])
+    .index("by_clientDvcCode", ["clientDvcCode"]),
 
   // ==========================================
   // MÓDULO 2: CLIENTES DEL BAR-RESTAURANTE

@@ -24,6 +24,16 @@ import { authorizeUser, authorizeOwnerOrAdmin, authorizeWebReservationAdmin } fr
 // CREACIÓN PÚBLICA DE RESERVACIONES (WEB / CLIENTE)
 // ==========================================
 
+function getDayOfWeek(dateStr: string): number {
+  const [year, month, day] = dateStr.split("-").map(Number);
+  if (!year || !month || !day) {
+    throw new Error("Formato de fecha inválido. Use YYYY-MM-DD.");
+  }
+  const dateObj = new Date(Date.UTC(year, month - 1, day));
+  const jsDay = dateObj.getUTCDay();
+  return jsDay === 0 ? 7 : jsDay;
+}
+
 export const createPublicReservation = mutation({
   args: {
     fullName: v.string(),
@@ -60,6 +70,40 @@ export const createPublicReservation = mutation({
     const partySizeNumber = Math.round(Number(args.partySize));
     if (isNaN(partySizeNumber) || partySizeNumber < 1) {
       throw new Error("La cantidad de personas debe ser al menos 1.");
+    }
+
+    // Validación de horario en Convex
+    const schedule = await ctx.db
+      .query("shift_schedules")
+      .withIndex("by_custom_id", (q) => q.eq("id", "default"))
+      .first();
+    
+    const weeklySchedule = schedule?.weeklySchedule || [];
+    const dayOfWeek = getDayOfWeek(cleanDate);
+    const daySchedule = weeklySchedule.find((d) => d.dayOfWeek === dayOfWeek);
+
+    if (!daySchedule || !daySchedule.enabled) {
+      throw new Error("El día seleccionado no es un día operativo.");
+    }
+
+    const reqMinutes = parseTimeToMinutes(cleanTime);
+    const openMinutes = parseTimeToMinutes(daySchedule.openTime || "00:00");
+    const closeMinutes = parseTimeToMinutes(daySchedule.closeTime || "23:59");
+
+    if (reqMinutes === null || openMinutes === null || closeMinutes === null) {
+      throw new Error("El formato de hora seleccionado no es válido.");
+    }
+
+    // Manejo de cruce de medianoche
+    let isWithinHours = false;
+    if (openMinutes <= closeMinutes) {
+      isWithinHours = reqMinutes >= openMinutes && reqMinutes < closeMinutes;
+    } else {
+      isWithinHours = reqMinutes >= openMinutes || reqMinutes < closeMinutes;
+    }
+
+    if (!isWithinHours) {
+      throw new Error(`El horario seleccionado está fuera del rango operativo de ${daySchedule.openTime} a ${daySchedule.closeTime}.`);
     }
 
     const now = Date.now();
@@ -153,9 +197,62 @@ export const createPublicReservation = mutation({
  */
 export const submitReservation = createPublicReservation;
 
+/**
+ * Consulta pública por DVC del navegador para que el cliente consulte el estado
+ * de sus reservaciones sin exponer teléfonos, correos ni datos personales.
+ */
+export const listPublicReservationsByDvc = query({
+  args: {
+    clientDvcCode: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const cleanDvc = args.clientDvcCode.trim().toUpperCase();
+    if (!cleanDvc) {
+      return [];
+    }
+
+    const visibleStatuses = new Set([
+      "Pendiente",
+      "Negociación",
+      "Confirmado",
+      "Rechazado",
+      "Cancelado",
+    ]);
+
+    const records = await ctx.db
+      .query("restaurant_reservations")
+      .withIndex("by_clientDvcCode", (q) => q.eq("clientDvcCode", cleanDvc))
+      .collect();
+
+    const sorted = records.sort((a, b) => b.createdAt - a.createdAt);
+    if (sorted.length === 0 || !visibleStatuses.has(sorted[0].status)) {
+      return [];
+    }
+
+    return sorted
+      .filter((r) => visibleStatuses.has(r.status))
+      .map((r) => ({
+        _id: r._id,
+        id: r.id,
+        status: r.status,
+        date: r.date,
+        time: r.time,
+        partySize: r.partySize,
+        tableNumber: r.tableNumber ?? r.assignedTableNumber ?? null,
+        seatingArea: r.seatingArea ?? "terraza",
+        alternativeDate: r.alternativeDate ?? null,
+        alternativeTime: r.alternativeTime ?? null,
+        alternativeNotes: r.alternativeNotes ?? null,
+        createdAt: r.createdAt,
+        updatedAt: r.updatedAt,
+      }));
+  },
+});
+
 // ==========================================
 // CONSULTAS ADMINISTRATIVAS (ANDROID & PANEL)
 // ==========================================
+
 
 export const listReservations = query({
   args: {

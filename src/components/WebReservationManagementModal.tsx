@@ -27,8 +27,10 @@ import {
   ChevronRight,
   Bell,
   BellOff,
+  MessageSquare,
 } from 'lucide-react';
 import { useWebPush } from '../hooks/useWebPush';
+import { ContactAction } from './ContactAction';
 
 interface WebReservationManagementModalProps {
   isOpen: boolean;
@@ -1114,6 +1116,26 @@ export const WebReservationManagementModal: React.FC<WebReservationManagementMod
                                 </span>
                               )}
                             </div>
+
+                            {/* Botones de Contacto */}
+                            <div className="flex items-center gap-2 mt-3 pt-3 border-t border-[#E9E2D6]/10">
+                              <ContactAction
+                                phone={r.emailOrPhone}
+                                type="sms"
+                                status={r.status}
+                                name={r.fullName}
+                                date={r.date}
+                                time={r.time}
+                              />
+                              <ContactAction
+                                phone={r.emailOrPhone}
+                                type="whatsapp"
+                                status={r.status}
+                                name={r.fullName}
+                                date={r.date}
+                                time={r.time}
+                              />
+                            </div>
                           </button>
                         );
                       })
@@ -1122,9 +1144,11 @@ export const WebReservationManagementModal: React.FC<WebReservationManagementMod
 
                   {/* Detail & Actions Column */}
                   <div
-                    className={`glass-panel-dark rounded-2xl p-5 lg:p-6 border border-[#E9E2D6]/15 ${
-                      isLandscape ? 'col-span-7' : ''
-                    }`}
+                    className={`glass-panel-dark rounded-2xl p-5 lg:p-6 transition-all duration-300 ${
+                      selectedReservation
+                        ? 'border-2 border-[#9B1B30] shadow-[0_0_15px_rgba(155,27,48,0.3)]'
+                        : 'border border-[#E9E2D6]/15'
+                    } ${isLandscape ? 'col-span-7' : ''}`}
                   >
                     {!selectedReservation ? (
                       <div className="py-16 text-center text-xs text-[#8A8380]">

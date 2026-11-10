@@ -41,7 +41,7 @@ export const getReservationStatusMeta = (status?: string): ReservationStatusMeta
     case 'confirmed':
     case 'confirmado':
       return {
-        label: 'Confirmado',
+        label: 'Confirmada',
         badgeClass: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40',
         icon: CheckCircle2,
         title: '¡Reserva confirmada!',
@@ -59,39 +59,61 @@ export const getReservationStatusMeta = (status?: string): ReservationStatusMeta
     case 'cancelled':
     case 'cancelado':
       return {
-        label: 'Cancelado',
-        badgeClass: 'bg-gray-500/20 text-gray-300 border-gray-500/40',
-        icon: RotateCcw,
-        title: 'Solicitud cancelada',
-        desc: 'Esta solicitud de reservación ha sido cancelada.',
+        label: 'Cancelada',
+        badgeClass: 'bg-zinc-900 text-zinc-400 border-zinc-700',
+        icon: XCircle,
+        title: 'Reservación Cancelada',
+        desc: 'Esta reservación ha sido cancelada.',
       };
-    case 'marcada':
     case 'marked':
+    case 'marcada':
       return {
-        label: 'Marcada (Inasistencia)',
-        badgeClass: 'bg-orange-500/20 text-orange-300 border-orange-500/40',
+        label: 'Marcada',
+        badgeClass: 'bg-orange-950/50 text-orange-300 border-orange-500/30',
         icon: AlertTriangle,
-        title: 'Inasistencia registrada',
-        desc: 'La reservación fue marcada como inasistencia.',
+        title: 'Marcada',
+        desc: 'Esta reservación ha sido marcada por el administrador.',
       };
     case 'consolidated':
     case 'consolidado':
-    case 'completed':
-    case 'fulfilled':
       return {
-        label: 'Consolidado',
-        badgeClass: 'bg-teal-500/20 text-teal-300 border-teal-500/40',
+        label: 'Consolidada',
+        badgeClass: 'bg-teal-950/50 text-teal-300 border-teal-500/30',
         icon: FileCheck2,
-        title: 'Visita realizada',
-        desc: 'La visita ha sido registrada exitosamente en Bar Terraza. ¡Gracias por compartir con nosotros!',
+        title: 'Consolidada',
+        desc: 'Tu reservación ha sido consolidada.',
       };
     default:
       return {
-        label: 'Estado Desconocido',
-        badgeClass: 'bg-gray-500/20 text-gray-300 border-gray-500/40',
-        icon: Clock,
-        title: 'Estado de solicitud',
-        desc: 'La solicitud se encuentra en proceso.',
+        label: 'Desconocido',
+        badgeClass: 'bg-gray-800 text-gray-300 border-gray-600',
+        icon: AlertTriangle,
+        title: 'Estado desconocido',
+        desc: 'No pudimos determinar el estado de tu reservación.',
       };
+  }
+};
+
+export const getReservationButtonMeta = (status?: string) => {
+  const s = (status || '').trim().toLowerCase();
+  switch (s) {
+    case 'pending':
+    case 'pendiente':
+      return { label: 'Pendiente', badgeClass: 'bg-amber-800 text-amber-100 border border-amber-500' };
+    case 'negotiation':
+    case 'negociación':
+    case 'negociacion':
+      return { label: 'Negociación', badgeClass: 'bg-indigo-800 text-indigo-100 border border-indigo-500' };
+    case 'confirmed':
+    case 'confirmado':
+      return { label: 'Confirmada', badgeClass: 'bg-emerald-800 text-emerald-100 border border-emerald-500' };
+    case 'rejected':
+    case 'rechazado':
+      return { label: 'Rechazada', badgeClass: 'bg-red-800 text-red-100 border border-red-500' };
+    case 'cancelled':
+    case 'cancelado':
+      return { label: 'Cancelada', badgeClass: 'bg-zinc-800 text-zinc-200 border border-zinc-600' };
+    default:
+      return { label: 'Reservar', badgeClass: 'bg-[#9B1B30] text-white border border-[#9B1B30]' };
   }
 };

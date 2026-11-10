@@ -31,6 +31,7 @@ const LAST_RES_ID_KEY = 'dg_last_public_res_id';
 export const ReservationSection: React.FC = () => {
   const isOnline = useOnlineStatus();
   const { dvc } = useDeviceIdentity();
+  const schedule = useQuery(api.shift.getPublicOpeningHours, {});
   const {
     isSupported: pushSupported,
     isConfigured: pushConfigured,
@@ -370,8 +371,17 @@ export const ReservationSection: React.FC = () => {
                         min={todayStr}
                         value={formData.date}
                         onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                        disabled={isSubmitting}
+                        disabled={isSubmitting || !schedule}
                         className="w-full bg-[#1E1E1E]/90 border border-[#E9E2D6]/20 rounded px-4 py-3 text-sm text-[#FFFBF2] focus:outline-none focus:border-[#9B1B30] disabled:opacity-60"
+                        onInput={(e) => {
+                          const date = new Date(e.currentTarget.value + 'T00:00:00');
+                          const day = date.getDay() === 0 ? 7 : date.getDay();
+                          const isEnabled = schedule?.weeklySchedule.find(d => d.dayOfWeek === day)?.enabled;
+                          if (!isEnabled) {
+                            alert("Este día no está habilitado para reservaciones.");
+                            e.currentTarget.value = '';
+                          }
+                        }}
                       />
                     </div>
 
@@ -383,25 +393,37 @@ export const ReservationSection: React.FC = () => {
                       <select
                         value={formData.time}
                         onChange={(e) => setFormData({ ...formData, time: e.target.value })}
-                        disabled={isSubmitting}
+                        disabled={isSubmitting || !schedule || !formData.date}
                         className="w-full bg-[#1E1E1E]/90 border border-[#E9E2D6]/20 rounded px-4 py-3 text-sm text-[#FFFBF2] focus:outline-none focus:border-[#9B1B30] disabled:opacity-60"
                       >
-                        <optgroup label="Turno Almuerzo (11:00 AM — 3:00 PM)">
-                          <option value="11:00 AM">11:00 AM</option>
-                          <option value="12:00 PM">12:00 PM</option>
-                          <option value="1:00 PM">1:00 PM</option>
-                          <option value="2:00 PM">2:00 PM</option>
-                        </optgroup>
-                        <optgroup label="Turno Cena & Noche (6:00 PM — Cierre)">
-                          <option value="6:00 PM">6:00 PM</option>
-                          <option value="7:00 PM">7:00 PM</option>
-                          <option value="8:00 PM">8:00 PM</option>
-                          <option value="9:00 PM">9:00 PM</option>
-                          <option value="10:00 PM">10:00 PM</option>
-                          <option value="11:00 PM">11:00 PM</option>
-                          <option value="12:00 AM">12:00 AM</option>
-                          <option value="1:00 AM">1:00 AM (Fines de semana)</option>
-                        </optgroup>
+                        {(() => {
+                          if (!formData.date || !schedule) return <option>Selecciona una fecha...</option>;
+                          const date = new Date(formData.date + 'T00:00:00');
+                          const day = date.getDay() === 0 ? 7 : date.getDay();
+                          const daySchedule = schedule.weeklySchedule.find(d => d.dayOfWeek === day);
+                          if (!daySchedule?.enabled) return <option>Día no operativo</option>;
+                          
+                          const hours = [];
+                          for (let h = 0; h < 24; h++) {
+                            for (let m = 0; m < 60; m += 30) {
+                              const timeStr = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+                              const minutes = h * 60 + m;
+                              const openM = parseInt(daySchedule.openTime!.split(':')[0]) * 60 + parseInt(daySchedule.openTime!.split(':')[1]);
+                              const closeM = parseInt(daySchedule.closeTime!.split(':')[0]) * 60 + parseInt(daySchedule.closeTime!.split(':')[1]);
+                              
+                              let isAllowed = false;
+                              if (openM <= closeM) isAllowed = minutes >= openM && minutes < closeM;
+                              else isAllowed = minutes >= openM || minutes < closeM;
+                              
+                              if (isAllowed) {
+                                const ampm = h >= 12 ? 'PM' : 'AM';
+                                const hr = h % 12 || 12;
+                                hours.push(<option key={timeStr} value={`${hr}:${m.toString().padStart(2, '0')} ${ampm}`}>{`${hr}:${m.toString().padStart(2, '0')} ${ampm}`}</option>);
+                              }
+                            }
+                          }
+                          return hours;
+                        })()}
                       </select>
                     </div>
 

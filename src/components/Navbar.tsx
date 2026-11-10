@@ -13,10 +13,106 @@ import { DeviceRegistrationModal } from './DeviceRegistrationModal';
 import { useWebAuth } from '../hooks/useWebAuth';
 import { WebAuthModal } from './WebAuthModal';
 import { WebReservationManagementModal } from './WebReservationManagementModal';
+import { useQuery } from 'convex/react';
+import { api } from '../../convex/_generated/api';
+import { getReservationButtonMeta } from '../utils/reservations';
 
 interface NavbarProps {
   onNavigate?: (sectionId: string) => void;
 }
+
+class ReservationButtonErrorBoundary extends React.Component<
+  { fallback: React.ReactNode; children: React.ReactNode },
+  { hasError: boolean }
+> {
+  constructor(props: { fallback: React.ReactNode; children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(): { hasError: boolean } {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: Error) {
+    console.warn('[Navbar] Reservation status query fallback:', error.message);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return this.props.fallback;
+    }
+    return this.props.children;
+  }
+}
+
+interface ReservationCtaProps {
+  dvc: string | null;
+  onClick: (e: React.MouseEvent<HTMLAnchorElement>) => void;
+  variant: 'desktop' | 'mobile-header' | 'mobile-drawer';
+}
+
+const ReservationCtaContent: React.FC<ReservationCtaProps & { meta: ReturnType<typeof getReservationButtonMeta> }> = ({
+  onClick,
+  variant,
+  meta,
+}) => {
+  if (variant === 'mobile-header') {
+    return (
+      <a
+        href="#reservas"
+        onClick={onClick}
+        className={`inline-flex items-center justify-center w-[112px] h-[28px] px-2 text-xs font-semibold uppercase tracking-wider text-center leading-none ${meta.badgeClass} rounded transition-colors whitespace-nowrap shrink-0 overflow-hidden`}
+      >
+        {meta.label}
+      </a>
+    );
+  }
+
+  if (variant === 'mobile-drawer') {
+    return (
+      <a
+        href="#reservas"
+        onClick={onClick}
+        className={`w-full text-center py-3 text-xs font-semibold uppercase tracking-wider ${meta.badgeClass} rounded shadow transition-colors whitespace-nowrap`}
+      >
+        {meta.label}
+      </a>
+    );
+  }
+
+  return (
+    <a
+      href="#reservas"
+      onClick={onClick}
+      className={`inline-flex items-center justify-center gap-2 w-[156px] h-[38px] px-3 text-xs font-semibold uppercase tracking-wider text-center leading-none ${meta.badgeClass} rounded transition-colors shadow-sm whitespace-nowrap shrink-0 overflow-hidden focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FFFBF2]`}
+    >
+      <Calendar className="w-3.5 h-3.5 shrink-0" />
+      <span>{meta.label}</span>
+    </a>
+  );
+};
+
+const DynamicReservationQueryButton: React.FC<ReservationCtaProps> = ({ dvc, onClick, variant }) => {
+  const reservations = useQuery(
+    api.reservations.listPublicReservationsByDvc,
+    dvc ? { clientDvcCode: dvc } : 'skip'
+  );
+  const latestReservation = reservations?.[0];
+  const meta = getReservationButtonMeta(latestReservation?.status);
+  return <ReservationCtaContent dvc={dvc} onClick={onClick} variant={variant} meta={meta} />;
+};
+
+const SafeReservationButton: React.FC<ReservationCtaProps> = (props) => {
+  const defaultMeta = getReservationButtonMeta(undefined);
+  const fallback = <ReservationCtaContent {...props} meta={defaultMeta} />;
+
+  return (
+    <ReservationButtonErrorBoundary fallback={fallback}>
+      <DynamicReservationQueryButton {...props} />
+    </ReservationButtonErrorBoundary>
+  );
+};
 
 export const Navbar: React.FC<NavbarProps> = ({ onNavigate }) => {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -216,14 +312,11 @@ export const Navbar: React.FC<NavbarProps> = ({ onNavigate }) => {
               </button>
             )}
 
-            <a
-              href="#reservas"
+            <SafeReservationButton
+              dvc={dvc}
               onClick={(e) => handleLinkClick(e, '#reservas')}
-              className="inline-flex items-center gap-2 px-5 py-2.5 text-xs font-semibold uppercase tracking-wider text-[#FFFBF2] bg-[#9B1B30] hover:bg-[#801426] active:bg-[#68101F] rounded transition-colors shadow-sm whitespace-nowrap shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FFFBF2]"
-            >
-              <Calendar className="w-3.5 h-3.5" />
-              <span>Reservar Mesa</span>
-            </a>
+              variant="desktop"
+            />
           </div>
 
           {/* Mobile menu trigger */}
@@ -238,13 +331,11 @@ export const Navbar: React.FC<NavbarProps> = ({ onNavigate }) => {
                 <Download className="w-4 h-4 text-[#9B1B30]" />
               </button>
             )}
-            <a
-              href="#reservas"
+            <SafeReservationButton
+              dvc={dvc}
               onClick={(e) => handleLinkClick(e, '#reservas')}
-              className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-[#FFFBF2] bg-[#9B1B30] rounded"
-            >
-              Reservar
-            </a>
+              variant="mobile-header"
+            />
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               className="p-2 text-[#FFFBF2] hover:text-[#E9E2D6] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#9B1B30] rounded"
@@ -301,13 +392,11 @@ export const Navbar: React.FC<NavbarProps> = ({ onNavigate }) => {
               </button>
             )}
 
-            <a
-              href="#reservas"
+            <SafeReservationButton
+              dvc={dvc}
               onClick={(e) => handleLinkClick(e, '#reservas')}
-              className="w-full text-center py-3 text-xs font-semibold uppercase tracking-wider text-[#FFFBF2] bg-[#9B1B30] rounded shadow"
-            >
-              Solicitar Reserva
-            </a>
+              variant="mobile-drawer"
+            />
             <p className="text-center text-xs text-[#8A8380]">
               Doña Gloria Bar-Terraza · Experiencia culinaria
             </p>
