@@ -15,17 +15,33 @@ import {
   RotateCcw,
   Sparkles,
   WifiOff,
+  Bell,
+  BellOff,
 } from 'lucide-react';
 import { ReservationRequest } from '../lib/convex';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { getReservationStatusMeta } from '../utils/reservations';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
+import { useDeviceIdentity } from '../hooks/useDeviceIdentity';
+import { useWebPush } from '../hooks/useWebPush';
 
 const LAST_RES_ID_KEY = 'dg_last_public_res_id';
 
 export const ReservationSection: React.FC = () => {
   const isOnline = useOnlineStatus();
+  const { dvc } = useDeviceIdentity();
+  const {
+    isSupported: pushSupported,
+    isConfigured: pushConfigured,
+    configError: pushConfigError,
+    retryConfig: retryPushConfig,
+    permission: pushPermission,
+    isSubscribed: pushSubscribed,
+    isSubscribing: pushSubscribing,
+    error: pushError,
+    enableNotifications,
+  } = useWebPush(dvc);
   const createReservation = useMutation(api.reservations.createPublicReservation);
 
   // Form State
@@ -81,6 +97,7 @@ export const ReservationSection: React.FC = () => {
         partySize: Number(formData.partySize) || 2,
         seatingArea: formData.seatingArea || 'terraza',
         specialNotes: formData.specialNotes?.trim() || undefined,
+        clientDvcCode: dvc || undefined,
       });
 
       const resId = result?.id || result?._id;
@@ -232,6 +249,53 @@ export const ReservationSection: React.FC = () => {
                           <strong className="text-[#FFFBF2]">{liveReservation.time}</strong>
                         </div>
                       </div>
+
+                      {/* Notificaciones Push de estado para el cliente (interacción explícita) */}
+                      {pushSupported && (pushConfigured || pushConfigError) && (
+                        <div className="max-w-md mx-auto">
+                          {pushConfigError ? (
+                            <div className="p-3 rounded-lg bg-[#1E1E1E]/80 border border-[#E9E2D6]/15 text-[11px] text-[#E9E2D6]/75 flex items-center justify-between gap-2">
+                              <span>{pushConfigError}</span>
+                              <button
+                                type="button"
+                                onClick={retryPushConfig}
+                                className="px-2.5 py-1 rounded bg-[#2A2A2A] hover:bg-[#333333] text-[#E3B87C] font-semibold shrink-0"
+                              >
+                                Reintentar
+                              </button>
+                            </div>
+                          ) : pushSubscribed ? (
+                            <div className="p-3 rounded-lg bg-emerald-950/30 border border-emerald-500/25 text-xs text-emerald-200 flex items-center justify-center gap-2">
+                              <Bell className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                              <span>Notificaciones activadas para cambios de estado</span>
+                            </div>
+                          ) : pushPermission === 'denied' ? (
+                            <div className="p-3 rounded-lg bg-[#1E1E1E]/80 border border-[#E9E2D6]/10 text-[11px] text-[#8A8380] flex items-center justify-center gap-2">
+                              <BellOff className="w-3.5 h-3.5 shrink-0" />
+                              <span>Notificaciones bloqueadas en el navegador. El estado se actualiza aquí en tiempo real.</span>
+                            </div>
+                          ) : (
+                            <div className="text-center space-y-1.5">
+                              <button
+                                type="button"
+                                onClick={enableNotifications}
+                                disabled={pushSubscribing}
+                                className="inline-flex items-center justify-center gap-2 px-4 py-2.5 text-xs font-semibold text-[#E3B87C] hover:text-[#FFFBF2] bg-[#1E1E1E] hover:bg-[#2A2A2A] border border-[#E3B87C]/35 rounded-lg transition-colors disabled:opacity-50"
+                              >
+                                {pushSubscribing ? (
+                                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                ) : (
+                                  <Bell className="w-3.5 h-3.5" />
+                                )}
+                                <span>Avisarme por notificación cuando cambie el estado</span>
+                              </button>
+                              {pushError && (
+                                <p className="text-[11px] text-red-300">{pushError}</p>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )}
 
                       <div className="text-center pt-2">
                         <button

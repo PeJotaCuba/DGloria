@@ -36,6 +36,7 @@ export const createPublicReservation = mutation({
     email: v.optional(v.string()),
     phone: v.optional(v.string()),
     source: v.optional(v.string()),
+    clientDvcCode: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const cleanFullName = args.fullName.trim();
@@ -81,6 +82,7 @@ export const createPublicReservation = mutation({
       requestedDate: cleanDate,
       requestedTime: cleanTime,
       status: "Pendiente" as const,
+      clientDvcCode: args.clientDvcCode?.trim().toUpperCase() || undefined,
       createdAt: now,
       updatedAt: now,
     };
@@ -126,6 +128,14 @@ export const createPublicReservation = mutation({
         message: notifMessage,
         type: "RESERVACION",
         reservationId: reservationId,
+      });
+
+      // Enviar Web Push a navegadores ACTIVE suscritos
+      await ctx.scheduler.runAfter(0, internal.webPush.notifyActiveBrowsersNewReservation, {
+        reservationId,
+        date: cleanDate,
+        time: cleanTime,
+        partySize: partySizeNumber,
       });
     } catch (e) {
       console.error("Error al registrar notificación de reservación:", e);
@@ -475,7 +485,27 @@ export const updateReservationStatus = mutation({
       patch.specialNotes = args.specialNotes.trim();
     }
 
+    const previousStatus = reservation.status;
     await ctx.db.patch(reservation._id, patch);
+
+    if (
+      reservation.clientDvcCode &&
+      previousStatus !== args.status &&
+      (args.status === "Confirmado" || args.status === "Negociación")
+    ) {
+      await ctx.scheduler.runAfter(
+        0,
+        internal.webPush.notifyClientReservationStatusChanged,
+        {
+          dvcCode: reservation.clientDvcCode,
+          reservationId: reservation.id,
+          newStatus: args.status,
+          tableNumber: patch.tableNumber ?? reservation.tableNumber,
+          alternativeDate: patch.alternativeDate ?? reservation.alternativeDate,
+          alternativeTime: patch.alternativeTime ?? reservation.alternativeTime,
+        }
+      );
+    }
 
     return {
       ...reservation,
@@ -1411,7 +1441,21 @@ export const assignTableAndConfirmReservation = mutation({
       updatedAt: now,
     };
 
+    const previousStatus = reservation.status;
     await ctx.db.patch(reservation._id, patch);
+
+    if (reservation.clientDvcCode && previousStatus !== "Confirmado") {
+      await ctx.scheduler.runAfter(
+        0,
+        internal.webPush.notifyClientReservationStatusChanged,
+        {
+          dvcCode: reservation.clientDvcCode,
+          reservationId: reservation.id,
+          newStatus: "Confirmado",
+          tableNumber: table.number,
+        }
+      );
+    }
 
     return {
       ...reservation,
@@ -2190,7 +2234,21 @@ export const webAssignTableAndConfirmReservation = mutation({
       updatedAt: now,
     };
 
+    const previousStatus = reservation.status;
     await ctx.db.patch(reservation._id, patch);
+
+    if (reservation.clientDvcCode && previousStatus !== "Confirmado") {
+      await ctx.scheduler.runAfter(
+        0,
+        internal.webPush.notifyClientReservationStatusChanged,
+        {
+          dvcCode: reservation.clientDvcCode,
+          reservationId: reservation.id,
+          newStatus: "Confirmado",
+          tableNumber: table.number,
+        }
+      );
+    }
 
     return {
       ...reservation,
@@ -2275,7 +2333,28 @@ export const webUpdateReservationStatus = mutation({
       patch.notes = args.notes.trim();
     }
 
+    const previousStatus = reservation.status;
     await ctx.db.patch(reservation._id, patch);
+
+    if (
+      reservation.clientDvcCode &&
+      previousStatus !== args.status &&
+      (args.status === "Confirmado" || args.status === "Negociación")
+    ) {
+      await ctx.scheduler.runAfter(
+        0,
+        internal.webPush.notifyClientReservationStatusChanged,
+        {
+          dvcCode: reservation.clientDvcCode,
+          reservationId: reservation.id,
+          newStatus: args.status,
+          tableNumber: reservation.tableNumber,
+          alternativeDate: patch.alternativeDate ?? reservation.alternativeDate,
+          alternativeTime: patch.alternativeTime ?? reservation.alternativeTime,
+        }
+      );
+    }
+
     return { ...reservation, ...patch };
   },
 });

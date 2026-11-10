@@ -324,6 +324,7 @@ export default defineSchema({
     markedByUserName: v.optional(v.string()), // Nombre del administrador responsable
     customerId: v.optional(v.string()), // Relación opcional con cliente
     trackingCodeHash: v.optional(v.string()), // Respaldo de hash de código de seguimiento web
+    clientDvcCode: v.optional(v.string()), // DVC del navegador cliente que envió la solicitud
     createdAt: v.number(), // Marca de tiempo de creación
     updatedAt: v.number(), // Marca de tiempo de última actualización
   })
@@ -1072,6 +1073,24 @@ export default defineSchema({
     updatedAt: v.optional(v.number()),
     registeredAt: v.optional(v.number()), // Match existing data
     lastActiveAt: v.optional(v.number()), // Match existing data
+    pushSubscription: v.optional(
+      v.object({
+        endpoint: v.string(),
+        expirationTime: v.optional(v.union(v.number(), v.null())),
+        keys: v.object({
+          p256dh: v.string(),
+          auth: v.string(),
+        }),
+      })
+    ),
+    pushPermission: v.optional(
+      v.union(
+        v.literal("granted"),
+        v.literal("denied"),
+        v.literal("default")
+      )
+    ),
+    pushUpdatedAt: v.optional(v.number()),
   })
     .index("by_custom_id", ["id"])
     .index("by_dvcCode", ["dvcCode"])

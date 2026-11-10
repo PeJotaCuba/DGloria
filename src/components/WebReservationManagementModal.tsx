@@ -25,7 +25,10 @@ import {
   RefreshCw,
   Ban,
   ChevronRight,
+  Bell,
+  BellOff,
 } from 'lucide-react';
+import { useWebPush } from '../hooks/useWebPush';
 
 interface WebReservationManagementModalProps {
   isOpen: boolean;
@@ -61,6 +64,19 @@ export const WebReservationManagementModal: React.FC<WebReservationManagementMod
   const [selectedReservationId, setSelectedReservationId] = useState<string | null>(null);
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
   const [customerSearch, setCustomerSearch] = useState('');
+  const {
+    isSupported: pushSupported,
+    isConfigured: pushConfigured,
+    configLoaded: pushConfigLoaded,
+    configError: pushConfigError,
+    retryConfig: retryPushConfig,
+    permission: pushPermission,
+    isSubscribed: pushSubscribed,
+    isSubscribing: pushSubscribing,
+    error: pushError,
+    enableNotifications,
+    disableNotifications,
+  } = useWebPush(dvcCode);
   const [isLandscape, setIsLandscape] = useState<boolean>(() => {
     if (typeof window === 'undefined') return false;
     return window.matchMedia('(orientation: landscape)').matches || window.innerWidth > window.innerHeight;
@@ -962,6 +978,58 @@ export const WebReservationManagementModal: React.FC<WebReservationManagementMod
                         className="px-3 py-2.5 rounded-lg bg-[#1A1A1A] border border-[#E9E2D6]/15 text-xs text-[#E9E2D6]/70 hover:text-[#FFFBF2]"
                       >
                         Limpiar
+                      </button>
+                    )}
+
+                    {pushSupported && pushConfigLoaded && (
+                      <button
+                        type="button"
+                        onClick={
+                          pushConfigError
+                            ? retryPushConfig
+                            : pushSubscribed
+                            ? disableNotifications
+                            : enableNotifications
+                        }
+                        disabled={pushSubscribing || (!pushConfigured && !pushConfigError)}
+                        title={
+                          pushConfigError
+                            ? `${pushConfigError} (Clic para reintentar)`
+                            : !pushConfigured
+                            ? 'Faltan claves VAPID en Convex (VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY)'
+                            : pushError ||
+                              (pushSubscribed
+                                ? 'Alertas Push activas (clic para desactivar)'
+                                : 'Activar alertas Push de nuevas reservaciones')
+                        }
+                        className={`px-3 py-2.5 rounded-lg border text-xs font-medium flex items-center gap-1.5 whitespace-nowrap transition-colors disabled:opacity-50 ${
+                          pushSubscribed
+                            ? 'bg-emerald-950/50 border-emerald-500/40 text-emerald-200 hover:bg-emerald-950/80'
+                            : pushPermission === 'denied'
+                            ? 'bg-[#1A1A1A] border-[#E9E2D6]/15 text-[#8A8380]'
+                            : 'bg-[#1A1A1A] border-[#E3B87C]/35 text-[#E3B87C] hover:bg-[#2A2A2A]'
+                        }`}
+                      >
+                        {pushSubscribing ? (
+                          <Loader2 size={14} className="animate-spin" />
+                        ) : pushSubscribed ? (
+                          <Bell size={14} className="text-emerald-400" />
+                        ) : pushPermission === 'denied' ? (
+                          <BellOff size={14} />
+                        ) : (
+                          <Bell size={14} />
+                        )}
+                        <span className="hidden sm:inline">
+                          {pushConfigError
+                            ? 'Reintentar alertas'
+                            : !pushConfigured
+                            ? 'VAPID no config.'
+                            : pushSubscribed
+                            ? 'Alertas activas'
+                            : pushPermission === 'denied'
+                            ? 'Alertas bloq.'
+                            : 'Activar alertas'}
+                        </span>
                       </button>
                     )}
                   </div>

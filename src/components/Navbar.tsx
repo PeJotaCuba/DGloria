@@ -56,6 +56,37 @@ export const Navbar: React.FC<NavbarProps> = ({ onNavigate }) => {
     logout,
   } = useWebAuth(dvc, status);
 
+  useEffect(() => {
+    const openGestionIfAuthorized = () => {
+      if (status !== 'ACTIVE') return;
+      if (isAuthenticated) {
+        setShowManagementModal(true);
+      } else {
+        setShowAuthModal(true);
+      }
+    };
+
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('openGestion') === '1' && status === 'ACTIVE') {
+      openGestionIfAuthorized();
+      params.delete('openGestion');
+      const nextSearch = params.toString();
+      const nextUrl = `${window.location.pathname}${nextSearch ? `?${nextSearch}` : ''}${window.location.hash}`;
+      window.history.replaceState({}, '', nextUrl);
+    }
+
+    if (!('serviceWorker' in navigator)) return;
+    const handleSwMessage = (event: MessageEvent) => {
+      if (event.data?.type === 'DG_OPEN_GESTION') {
+        openGestionIfAuthorized();
+      }
+    };
+    navigator.serviceWorker.addEventListener('message', handleSwMessage);
+    return () => {
+      navigator.serviceWorker.removeEventListener('message', handleSwMessage);
+    };
+  }, [status, isAuthenticated]);
+
   const handlePressStart = () => {
     const timer = window.setTimeout(() => {
       if (status !== 'ACTIVE') {

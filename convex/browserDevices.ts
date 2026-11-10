@@ -1,6 +1,8 @@
-import { mutation, query } from "./_generated/server";
+import { mutation, query, internalMutation, internalQuery } from "./_generated/server";
 import { v } from "convex/values";
 import { authorizeUser } from "./auth";
+
+declare const process: { env: Record<string, string | undefined> };
 
 /**
  * Módulo de Administración y Registro de Dispositivos de Navegador (WEB DVC) para Doña Gloria.
@@ -343,5 +345,224 @@ export const deleteDevice = mutation({
     await ctx.db.delete(device._id);
 
     return { success: true };
+  },
+});
+
+// ==========================================
+// WEB PUSH: SUSCRIPCIONES Y CONFIGURACIÓN VAPID
+// ==========================================
+
+export const getWebPushConfigStatus = query({
+  args: {},
+  handler: async () => {
+    const vapidPublicKey =
+      process.env.VAPID_PUBLIC_KEY?.trim() ||
+      process.env.VITE_VAPID_PUBLIC_KEY?.trim() ||
+      process.env.WEB_PUSH_VAPID_PUBLIC_KEY?.trim() ||
+      null;
+    const hasPrivateKey = Boolean(
+      process.env.VAPID_PRIVATE_KEY?.trim() ||
+        process.env.WEB_PUSH_VAPID_PRIVATE_KEY?.trim()
+    );
+
+    return {
+      configured: Boolean(vapidPublicKey && hasPrivateKey),
+      vapidPublicKey,
+    };
+  },
+});
+
+export const upsertBrowserPushSubscription = mutation({
+  args: {
+    dvcCode: v.string(),
+    userAgent: v.optional(v.string()),
+    permission: v.optional(
+      v.union(v.literal("granted"), v.literal("denied"), v.literal("default"))
+    ),
+    subscription: v.optional(
+      v.object({
+        endpoint: v.string(),
+        expirationTime: v.optional(v.union(v.number(), v.null())),
+        keys: v.object({
+          p256dh: v.string(),
+          auth: v.string(),
+        }),
+      })
+    ),
+  },
+  handler: async (ctx, args) => {
+    const cleanCode = args.dvcCode.trim().toUpperCase();
+    if (!cleanCode) {
+      throw new Error("Debe proporcionar un identificador DVC válido");
+    }
+
+    const now = Date.now();
+    let device = await ctx.db
+      .query("browser_devices")
+      .withIndex("by_dvcCode", (q) => q.eq("dvcCode", cleanCode))
+      .first();
+
+    if (!device) {
+      const all = await ctx.db.query("browser_devices").collect();
+      device =
+        all.find((d) => d.dvcCode.trim().toUpperCase() === cleanCode) || null;
+    }
+
+    if (!device) {
+      return {
+        success: false,
+        notFound: true,
+        subscribed: false,
+        message: "El dispositivo DVC aún no está registrado en browser_devices.",
+      };
+    }
+
+    const patch: Record<string, any> = {
+      pushUpdatedAt: now,
+      updatedAt: now,
+    };
+
+    if (args.permission) {
+      patch.pushPermission = args.permission;
+    }
+    if (args.subscription) {
+      patch.pushSubscription = args.subscription;
+    } else if (args.permission === "denied") {
+      patch.pushSubscription = undefined;
+    }
+
+    await ctx.db.patch(device._id, patch);
+
+    return {
+      success: true,
+      status: device.status,
+      subscribed: Boolean(args.subscription ?? device.pushSubscription),
+    };
+  },
+});
+
+export const removeBrowserPushSubscription = mutation({
+  args: {
+    dvcCode: v.string(),
+    endpoint: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const cleanCode = args.dvcCode.trim().toUpperCase();
+    if (!cleanCode) {
+      return { success: false };
+    }
+
+    let device = await ctx.db
+      .query("browser_devices")
+      .withIndex("by_dvcCode", (q) => q.eq("dvcCode", cleanCode))
+      .first();
+
+    if (!device) {
+      const all = await ctx.db.query("browser_devices").collect();
+      device =
+        all.find((d) => d.dvcCode.trim().toUpperCase() === cleanCode) || null;
+    }
+
+    if (!device) {
+      return { success: true };
+    }
+
+    if (
+      args.endpoint &&
+      device.pushSubscription &&
+      device.pushSubscription.endpoint !== args.endpoint
+    ) {
+      return { success: true };
+    }
+
+    await ctx.db.patch(device._id, {
+      pushSubscription: undefined,
+      pushUpdatedAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+
+    return { success: true };
+  },
+});
+
+export const listActiveAdminPushSubscriptions = internalQuery({
+  args: {},
+  handler: async (ctx) => {
+    const activeDevices = await ctx.db
+      .query("browser_devices")
+      .withIndex("by_status", (q) => q.eq("status", "ACTIVE"))
+      .collect();
+
+    return activeDevices
+      .filter(
+        (d) =>
+          d.status === "ACTIVE" &&
+          d.pushPermission !== "denied" &&
+          d.pushSubscription &&
+          d.pushSubscription.endpoint &&
+          d.pushSubscription.keys?.p256dh &&
+          d.pushSubscription.keys?.auth
+      )
+      .map((d) => ({
+        deviceId: d._id,
+        dvcCode: d.dvcCode,
+        subscription: d.pushSubscription!,
+      }));
+  },
+});
+
+export const getClientPushSubscriptionByDvc = internalQuery({
+  args: {
+    dvcCode: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const cleanCode = args.dvcCode.trim().toUpperCase();
+    if (!cleanCode) return null;
+
+    let device = await ctx.db
+      .query("browser_devices")
+      .withIndex("by_dvcCode", (q) => q.eq("dvcCode", cleanCode))
+      .first();
+
+    if (!device) {
+      const all = await ctx.db.query("browser_devices").collect();
+      device =
+        all.find((d) => d.dvcCode.trim().toUpperCase() === cleanCode) || null;
+    }
+
+    if (
+      !device ||
+      device.pushPermission === "denied" ||
+      !device.pushSubscription ||
+      !device.pushSubscription.endpoint ||
+      !device.pushSubscription.keys?.p256dh ||
+      !device.pushSubscription.keys?.auth
+    ) {
+      return null;
+    }
+
+    return {
+      deviceId: device._id,
+      dvcCode: device.dvcCode,
+      subscription: device.pushSubscription,
+    };
+  },
+});
+
+export const clearExpiredPushSubscription = internalMutation({
+  args: {
+    deviceId: v.id("browser_devices"),
+    endpoint: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const device = await ctx.db.get(args.deviceId);
+    if (!device) return;
+    if (device.pushSubscription?.endpoint === args.endpoint) {
+      await ctx.db.patch(device._id, {
+        pushSubscription: undefined,
+        pushUpdatedAt: Date.now(),
+        updatedAt: Date.now(),
+      });
+    }
   },
 });

@@ -24,6 +24,7 @@ import type * as restaurant from "../restaurant.js";
 import type * as shift from "../shift.js";
 import type * as shop from "../shop.js";
 import type * as users from "../users.js";
+import type * as webPush from "../webPush.js";
 
 import type {
   ApiFromModules,
@@ -48,6 +49,7 @@ declare const fullApi: ApiFromModules<{
   shift: typeof shift;
   shop: typeof shop;
   users: typeof users;
+  webPush: typeof webPush;
 }>;
 
 /**
