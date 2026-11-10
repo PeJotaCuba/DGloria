@@ -45,15 +45,6 @@ type ManagementTab =
   | 'Marcadas'
   | 'Consolidadas';
 
-const MANAGEMENT_TABS: ManagementTab[] = [
-  'Pendientes',
-  'Confirmadas',
-  'En negociación',
-  'Canceladas',
-  'Marcadas',
-  'Consolidadas',
-];
-
 export const WebReservationManagementModal: React.FC<WebReservationManagementModalProps> = ({
   isOpen,
   onClose,
@@ -272,15 +263,6 @@ export const WebReservationManagementModal: React.FC<WebReservationManagementMod
     } finally {
       setStaffSubmitting(false);
     }
-  };
-
-  const tabCounts: Record<ManagementTab, number> = {
-    Pendientes: stats?.totalPending ?? 0,
-    Confirmadas: stats?.totalConfirmed ?? 0,
-    'En negociación': stats?.totalNegotiation ?? 0,
-    Canceladas: stats?.totalCancelled ?? 0,
-    Marcadas: stats?.totalMarked ?? 0,
-    Consolidadas: stats?.totalConsolidated ?? 0,
   };
 
   return (
@@ -557,56 +539,97 @@ export const WebReservationManagementModal: React.FC<WebReservationManagementMod
         ) : (
           /* ================= GESTIÓN ================= */
           <>
-            {/* Metrics Row */}
+            {/* Metrics & Navigation Row */}
             <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
-              <div className="p-3.5 rounded-xl bg-[#1A1A1A] border border-amber-500/25">
-                <span className="text-[10px] uppercase tracking-wider text-amber-300/80 block">
-                  Pendientes
-                </span>
-                <strong className="text-xl font-bold text-amber-300">
-                  {stats?.totalPending ?? '—'}
-                </strong>
-              </div>
-              <div className="p-3.5 rounded-xl bg-[#1A1A1A] border border-emerald-500/25">
-                <span className="text-[10px] uppercase tracking-wider text-emerald-300/80 block">
-                  Confirmadas
-                </span>
-                <strong className="text-xl font-bold text-emerald-300">
-                  {stats?.totalConfirmed ?? '—'}
-                </strong>
-              </div>
-              <div className="p-3.5 rounded-xl bg-[#1A1A1A] border border-indigo-500/25">
-                <span className="text-[10px] uppercase tracking-wider text-indigo-300/80 block">
-                  Negociación
-                </span>
-                <strong className="text-xl font-bold text-indigo-300">
-                  {stats?.totalNegotiation ?? '—'}
-                </strong>
-              </div>
-              <div className="p-3.5 rounded-xl bg-[#1A1A1A] border border-red-500/25">
-                <span className="text-[10px] uppercase tracking-wider text-red-300/80 block">
-                  Canceladas
-                </span>
-                <strong className="text-xl font-bold text-red-300">
-                  {stats?.totalCancelled ?? '—'}
-                </strong>
-              </div>
-              <div className="p-3.5 rounded-xl bg-[#1A1A1A] border border-orange-500/25">
-                <span className="text-[10px] uppercase tracking-wider text-orange-300/80 block">
-                  Marcadas
-                </span>
-                <strong className="text-xl font-bold text-orange-300">
-                  {stats?.totalMarked ?? '—'}
-                </strong>
-              </div>
-              <div className="p-3.5 rounded-xl bg-[#1A1A1A] border border-teal-500/25">
-                <span className="text-[10px] uppercase tracking-wider text-teal-300/80 block">
-                  Consolidadas
-                </span>
-                <strong className="text-xl font-bold text-teal-300">
-                  {stats?.totalConsolidated ?? '—'}
-                </strong>
-              </div>
+              {(
+                [
+                  {
+                    tab: 'Pendientes' as ManagementTab,
+                    label: 'Pendientes',
+                    count: stats?.totalPending ?? '—',
+                    textClass: 'text-amber-300',
+                    labelClass: 'text-amber-300/80',
+                    idleBorder: 'border-amber-500/25 hover:border-amber-400/60',
+                    activeClass: 'bg-amber-500/15 border-amber-400 ring-1 ring-amber-400/40',
+                  },
+                  {
+                    tab: 'Confirmadas' as ManagementTab,
+                    label: 'Confirmadas',
+                    count: stats?.totalConfirmed ?? '—',
+                    textClass: 'text-emerald-300',
+                    labelClass: 'text-emerald-300/80',
+                    idleBorder: 'border-emerald-500/25 hover:border-emerald-400/60',
+                    activeClass: 'bg-emerald-500/15 border-emerald-400 ring-1 ring-emerald-400/40',
+                  },
+                  {
+                    tab: 'En negociación' as ManagementTab,
+                    label: 'En negociación',
+                    count: stats?.totalNegotiation ?? '—',
+                    textClass: 'text-indigo-300',
+                    labelClass: 'text-indigo-300/80',
+                    idleBorder: 'border-indigo-500/25 hover:border-indigo-400/60',
+                    activeClass: 'bg-indigo-500/15 border-indigo-400 ring-1 ring-indigo-400/40',
+                  },
+                  {
+                    tab: 'Canceladas' as ManagementTab,
+                    label: 'Canceladas',
+                    count: stats?.totalCancelled ?? '—',
+                    textClass: 'text-red-300',
+                    labelClass: 'text-red-300/80',
+                    idleBorder: 'border-red-500/25 hover:border-red-400/60',
+                    activeClass: 'bg-red-500/15 border-red-400 ring-1 ring-red-400/40',
+                  },
+                  {
+                    tab: 'Marcadas' as ManagementTab,
+                    label: 'Marcadas',
+                    count: stats?.totalMarked ?? '—',
+                    textClass: 'text-orange-300',
+                    labelClass: 'text-orange-300/80',
+                    idleBorder: 'border-orange-500/25 hover:border-orange-400/60',
+                    activeClass: 'bg-orange-500/15 border-orange-400 ring-1 ring-orange-400/40',
+                  },
+                  {
+                    tab: 'Consolidadas' as ManagementTab,
+                    label: 'Consolidadas',
+                    count: stats?.totalConsolidated ?? '—',
+                    textClass: 'text-teal-300',
+                    labelClass: 'text-teal-300/80',
+                    idleBorder: 'border-teal-500/25 hover:border-teal-400/60',
+                    activeClass: 'bg-teal-500/15 border-teal-400 ring-1 ring-teal-400/40',
+                  },
+                ] as const
+              ).map((item) => {
+                const isSelected = !showCustomers && activeTab === item.tab;
+                return (
+                  <button
+                    key={item.tab}
+                    type="button"
+                    onClick={() => {
+                      setShowCustomers(false);
+                      setActiveTab(item.tab);
+                      setSelectedReservationId(null);
+                      clearSubAction();
+                      setActionFeedback(null);
+                    }}
+                    className={`p-3.5 rounded-xl border text-left transition-colors ${
+                      isSelected
+                        ? item.activeClass
+                        : `bg-[#1A1A1A] ${item.idleBorder}`
+                    }`}
+                  >
+                    <span className={`text-[10px] uppercase tracking-wider ${item.labelClass} block`}>
+                      {item.label}
+                    </span>
+                    <div className="flex items-center justify-between">
+                      <strong className={`text-xl font-bold ${item.textClass}`}>
+                        {item.count}
+                      </strong>
+                      <ChevronRight size={16} className={item.textClass} />
+                    </div>
+                  </button>
+                );
+              })}
+
               <button
                 type="button"
                 onClick={() => {
@@ -774,32 +797,6 @@ export const WebReservationManagementModal: React.FC<WebReservationManagementMod
             ) : (
               /* ================= APARTADOS DE RESERVACIONES ================= */
               <>
-                {/* 6 Exact Tabs */}
-                <div className="flex flex-wrap items-center gap-2 border-b border-[#E9E2D6]/15 pb-3">
-                  {MANAGEMENT_TABS.map((tab) => (
-                    <button
-                      key={tab}
-                      type="button"
-                      onClick={() => {
-                        setActiveTab(tab);
-                        setSelectedReservationId(null);
-                        clearSubAction();
-                        setActionFeedback(null);
-                      }}
-                      className={`px-3.5 py-2 rounded-lg text-xs font-semibold transition-colors flex items-center gap-2 ${
-                        activeTab === tab
-                          ? 'bg-[#9B1B30] text-[#FFFBF2]'
-                          : 'bg-[#1A1A1A] text-[#E9E2D6]/75 hover:text-[#FFFBF2] border border-[#E9E2D6]/10'
-                      }`}
-                    >
-                      <span>{tab}</span>
-                      <span className="px-1.5 py-0.5 rounded bg-black/30 text-[10px] font-mono">
-                        {tabCounts[tab]}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-
                 {/* Search & Date Filters */}
                 <div className="flex flex-col sm:flex-row gap-3">
                   <div className="relative flex-1">

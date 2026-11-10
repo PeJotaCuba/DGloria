@@ -355,8 +355,21 @@ export const unregisterPushyToken = mutation({
   args: {
     userId: v.string(),
     deviceInfo: v.string(),
+    sessionToken: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    const cleanToken = args.sessionToken?.trim();
+    if (cleanToken) {
+      const session = await ctx.db
+        .query("user_sessions")
+        .withIndex("by_token", (q) => q.eq("token", cleanToken))
+        .first();
+
+      if (!session || session.userId !== args.userId) {
+        throw new Error("No autorizado: Sesión inválida para desregistrar el dispositivo");
+      }
+    }
+
     const existing = await ctx.db
       .query("pushy_tokens")
       .withIndex("by_userId", (q) => q.eq("userId", args.userId))
