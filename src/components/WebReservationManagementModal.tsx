@@ -68,6 +68,13 @@ export const WebReservationManagementModal: React.FC<WebReservationManagementMod
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
+    if (isOpen) {
+      try {
+        window.screen?.orientation?.unlock?.();
+      } catch {
+        // Ignorar si el navegador/WebAPK no permite desbloquear la orientación por API
+      }
+    }
     const mediaQuery = window.matchMedia('(orientation: landscape)');
     const updateOrientation = () => {
       setIsLandscape(mediaQuery.matches || window.innerWidth > window.innerHeight);
@@ -81,7 +88,7 @@ export const WebReservationManagementModal: React.FC<WebReservationManagementMod
       window.removeEventListener('resize', updateOrientation);
       window.removeEventListener('orientationchange', updateOrientation);
     };
-  }, []);
+  }, [isOpen]);
 
   // Action sub-panels state
   const [actionMode, setActionMode] = useState<
