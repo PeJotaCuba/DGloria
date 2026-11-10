@@ -13,8 +13,12 @@ import { ReservationLookupPage } from './pages/ReservationLookupPage';
 import { OfflineIndicator } from './components/OfflineIndicator';
 import { PWAInstallBanner } from './components/PWAInstallBanner';
 import { PWAUpdatePrompt } from './components/PWAUpdatePrompt';
+import { useDeviceIdentity } from './hooks/useDeviceIdentity';
 
 export default function App() {
+  // Inicializar identidad del dispositivo (DVC) para identificación de navegador
+  useDeviceIdentity();
+
   const [currentPath, setCurrentPath] = useState<string>(() => window.location.pathname);
   const { progress, prefersReducedMotion } = useScrollProgress();
 

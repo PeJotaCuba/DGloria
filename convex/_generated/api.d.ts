@@ -9,6 +9,7 @@
  */
 
 import type * as auth from "../auth.js";
+import type * as browserDevices from "../browserDevices.js";
 import type * as crons from "../crons.js";
 import type * as devices from "../devices.js";
 import type * as files from "../files.js";
@@ -26,6 +27,7 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   auth: typeof auth;
+  browserDevices: typeof browserDevices;
   crons: typeof crons;
   devices: typeof devices;
   files: typeof files;

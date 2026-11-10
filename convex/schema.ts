@@ -331,6 +331,16 @@ export default defineSchema(
       .index("by_status_and_createdAt", ["status", "createdAt"])
       .index("by_tracking_code_hash", ["trackingCodeHash"])
       .index("by_custom_id", ["id"]),
+
+    // Identificadores de navegadores para gestión WEB de reservaciones
+    browser_devices: defineTable({
+      dvcCode: v.string(), // Formato DVC-XXXXXX
+      status: v.string(), // PENDING, ACTIVE, INACTIVE
+      registeredAt: v.number(),
+      lastActiveAt: v.number(),
+      userAgent: v.optional(v.string()),
+      metadata: v.optional(v.any()),
+    }).index("by_dvcCode", ["dvcCode"]),
   },
   {
     schemaValidation: false,

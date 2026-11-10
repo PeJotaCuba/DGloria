@@ -8,6 +8,8 @@ import { ASSETS } from '../lib/assets';
 import { Menu, X, Calendar, Download } from 'lucide-react';
 import { usePWAInstall } from '../hooks/usePWAInstall';
 import { InstallModalIOS } from './InstallModalIOS';
+import { useDeviceIdentity } from '../hooks/useDeviceIdentity';
+import { DeviceRegistrationModal } from './DeviceRegistrationModal';
 
 interface NavbarProps {
   onNavigate?: (sectionId: string) => void;
@@ -32,6 +34,29 @@ export const Navbar: React.FC<NavbarProps> = ({ onNavigate }) => {
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  // Device Identity Logic
+  const { dvc, status } = useDeviceIdentity();
+  const [showDVCModal, setShowDVCModal] = useState(false);
+  const [pressTimer, setPressTimer] = useState<number | null>(null);
+
+  const handlePressStart = () => {
+    const timer = window.setTimeout(() => {
+      // Si el estado es ACTIVE, no mostramos el panel de registro DVC
+      // (Reservado para futuro panel de autenticación)
+      if (status !== 'ACTIVE') {
+        setShowDVCModal(true);
+      }
+    }, 5000);
+    setPressTimer(timer);
+  };
+
+  const handlePressEnd = () => {
+    if (pressTimer) {
+      window.clearTimeout(pressTimer);
+      setPressTimer(null);
+    }
+  };
 
   const navItems = [
     { label: 'Inicio', href: '#inicio' },
@@ -69,11 +94,18 @@ export const Navbar: React.FC<NavbarProps> = ({ onNavigate }) => {
             onClick={(e) => handleLinkClick(e, '#inicio')}
             className="flex items-center gap-3 group shrink-0 whitespace-nowrap focus:outline-none focus-visible:ring-2 focus-visible:ring-[#9B1B30] rounded-sm"
           >
-            <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-full overflow-hidden border border-[#E9E2D6]/20 bg-[#1E1E1E] flex items-center justify-center p-1 shadow-sm transition-transform group-hover:scale-105">
+            <div 
+              className="h-10 w-10 sm:h-12 sm:w-12 rounded-full overflow-hidden border border-[#E9E2D6]/20 bg-[#1E1E1E] flex items-center justify-center p-1 shadow-sm transition-transform group-hover:scale-105"
+              onMouseDown={handlePressStart}
+              onMouseUp={handlePressEnd}
+              onMouseLeave={handlePressEnd}
+              onTouchStart={handlePressStart}
+              onTouchEnd={handlePressEnd}
+            >
               <img
                 src={ASSETS.logoTransparent}
                 alt="Logo Doña Gloria Bar-Terraza"
-                className="w-full h-full object-contain"
+                className="w-full h-full object-contain pointer-events-none"
               />
             </div>
             <div className="flex flex-col">
@@ -203,6 +235,16 @@ export const Navbar: React.FC<NavbarProps> = ({ onNavigate }) => {
         isOpen={showIOSGuide}
         onClose={() => setShowIOSGuide(false)}
       />
+
+      {/* DVC Identity Modal */}
+      {dvc && (
+        <DeviceRegistrationModal
+          isOpen={showDVCModal}
+          onClose={() => setShowDVCModal(false)}
+          dvc={dvc}
+          status={status}
+        />
+      )}
     </>
   );
 };
