@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { WebAuthUser } from '../hooks/useWebAuth';
@@ -61,6 +61,27 @@ export const WebReservationManagementModal: React.FC<WebReservationManagementMod
   const [selectedReservationId, setSelectedReservationId] = useState<string | null>(null);
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
   const [customerSearch, setCustomerSearch] = useState('');
+  const [isLandscape, setIsLandscape] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    return window.matchMedia('(orientation: landscape)').matches || window.innerWidth > window.innerHeight;
+  });
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const mediaQuery = window.matchMedia('(orientation: landscape)');
+    const updateOrientation = () => {
+      setIsLandscape(mediaQuery.matches || window.innerWidth > window.innerHeight);
+    };
+    updateOrientation();
+    mediaQuery.addEventListener?.('change', updateOrientation);
+    window.addEventListener('resize', updateOrientation);
+    window.addEventListener('orientationchange', updateOrientation);
+    return () => {
+      mediaQuery.removeEventListener?.('change', updateOrientation);
+      window.removeEventListener('resize', updateOrientation);
+      window.removeEventListener('orientationchange', updateOrientation);
+    };
+  }, []);
 
   // Action sub-panels state
   const [actionMode, setActionMode] = useState<
@@ -268,14 +289,26 @@ export const WebReservationManagementModal: React.FC<WebReservationManagementMod
   return (
     <div className="fixed inset-0 z-[95] bg-[#121212]/95 backdrop-blur-md flex flex-col overflow-hidden text-[#FFFBF2]">
       {/* Top Header */}
-      <header className="border-b border-[#E9E2D6]/15 bg-[#1A1A1A] px-4 sm:px-8 py-3.5 flex flex-wrap items-center justify-between gap-4 shrink-0">
-        <div className="flex items-center gap-4">
-          <div>
-            <h1 className="font-serif text-lg sm:text-xl font-bold text-[#FFFBF2]">
+      <header
+        className={`border-b border-[#E9E2D6]/15 bg-[#1A1A1A] shrink-0 ${
+          isLandscape
+            ? 'px-4 sm:px-6 lg:px-8 py-2.5 lg:py-3.5 flex items-center justify-between gap-3 lg:gap-4'
+            : 'px-4 py-3 flex flex-col gap-3'
+        }`}
+      >
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <h1
+              className={`font-serif font-bold text-[#FFFBF2] truncate ${
+                isLandscape ? 'text-base sm:text-lg lg:text-xl' : 'text-lg'
+              }`}
+            >
               Gestión WEB de Reservaciones
             </h1>
-            <div className="flex flex-wrap items-center gap-2 text-[11px] text-[#E9E2D6]/70">
-              <span>{user.fullName || user.name || user.username}</span>
+            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 text-[11px] text-[#E9E2D6]/70">
+              <span className="truncate max-w-[220px] sm:max-w-none">
+                {user.fullName || user.name || user.username}
+              </span>
               <span className="px-2 py-0.5 rounded bg-[#9B1B30]/25 text-[#E3B87C] font-semibold">
                 {user.role}
               </span>
@@ -284,58 +317,116 @@ export const WebReservationManagementModal: React.FC<WebReservationManagementMod
           </div>
         </div>
 
-        {/* Main 2 Options: GESTIÓN / SOLICITUD */}
-        <div className="flex items-center gap-2 bg-[#121212] p-1 rounded-lg border border-[#E9E2D6]/15">
-          <button
-            type="button"
-            onClick={() => setMainSection('gestion')}
-            className={`px-4 py-2 rounded-md text-xs font-semibold uppercase tracking-wider flex items-center gap-2 transition-colors ${
-              mainSection === 'gestion'
-                ? 'bg-[#9B1B30] text-[#FFFBF2]'
-                : 'text-[#E9E2D6]/70 hover:text-[#FFFBF2]'
-            }`}
-          >
-            <LayoutGrid size={14} />
-            <span>Gestión</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setMainSection('solicitud')}
-            className={`px-4 py-2 rounded-md text-xs font-semibold uppercase tracking-wider flex items-center gap-2 transition-colors ${
-              mainSection === 'solicitud'
-                ? 'bg-[#9B1B30] text-[#FFFBF2]'
-                : 'text-[#E9E2D6]/70 hover:text-[#FFFBF2]'
-            }`}
-          >
-            <PlusCircle size={14} />
-            <span>Solicitud</span>
-          </button>
-        </div>
+        {isLandscape ? (
+          <>
+            {/* Horizontal: GESTIÓN / SOLICITUD side-by-side */}
+            <div className="flex items-center gap-1.5 bg-[#121212] p-1 rounded-lg border border-[#E9E2D6]/15 shrink-0">
+              <button
+                type="button"
+                onClick={() => setMainSection('gestion')}
+                className={`px-3 lg:px-4 py-1.5 lg:py-2 rounded-md text-xs font-semibold uppercase tracking-wider flex items-center gap-1.5 transition-colors ${
+                  mainSection === 'gestion'
+                    ? 'bg-[#9B1B30] text-[#FFFBF2]'
+                    : 'text-[#E9E2D6]/70 hover:text-[#FFFBF2]'
+                }`}
+              >
+                <LayoutGrid size={14} />
+                <span>Gestión</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setMainSection('solicitud')}
+                className={`px-3 lg:px-4 py-1.5 lg:py-2 rounded-md text-xs font-semibold uppercase tracking-wider flex items-center gap-1.5 transition-colors ${
+                  mainSection === 'solicitud'
+                    ? 'bg-[#9B1B30] text-[#FFFBF2]'
+                    : 'text-[#E9E2D6]/70 hover:text-[#FFFBF2]'
+                }`}
+              >
+                <PlusCircle size={14} />
+                <span>Solicitud</span>
+              </button>
+            </div>
 
-        {/* Window & Session Actions */}
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-3 py-2 rounded-lg border border-[#E9E2D6]/20 text-xs font-medium text-[#E9E2D6] hover:text-[#FFFBF2] hover:bg-[#2A2A2A] transition-colors flex items-center gap-1.5"
-            title="Minimizar panel y ver la página pública"
-          >
-            <X size={14} />
-            <span className="hidden sm:inline">Volver a la web</span>
-          </button>
-          <button
-            type="button"
-            onClick={onLogout}
-            className="px-3.5 py-2 rounded-lg bg-red-950/60 hover:bg-red-900/80 border border-red-500/40 text-xs font-semibold uppercase tracking-wider text-red-200 transition-colors flex items-center gap-1.5"
-          >
-            <LogOut size={14} />
-            <span>Salir</span>
-          </button>
-        </div>
+            {/* Horizontal: Volver a la web / SALIR side-by-side */}
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-3 py-1.5 lg:py-2 rounded-lg border border-[#E9E2D6]/20 text-xs font-medium text-[#E9E2D6] hover:text-[#FFFBF2] hover:bg-[#2A2A2A] transition-colors flex items-center gap-1.5 whitespace-nowrap"
+                title="Minimizar panel y ver la página pública"
+              >
+                <X size={14} />
+                <span>Volver a la web</span>
+              </button>
+              <button
+                type="button"
+                onClick={onLogout}
+                className="px-3.5 py-1.5 lg:py-2 rounded-lg bg-red-950/60 hover:bg-red-900/80 border border-red-500/40 text-xs font-semibold uppercase tracking-wider text-red-200 transition-colors flex items-center gap-1.5 whitespace-nowrap"
+              >
+                <LogOut size={14} />
+                <span>Salir</span>
+              </button>
+            </div>
+          </>
+        ) : (
+          /* Mobile Portrait: Left (GESTIÓN above SOLICITUD) & Right (Volver a la web above SALIR) */
+          <div className="grid grid-cols-2 gap-2.5 w-full">
+            <div className="flex flex-col gap-1 bg-[#121212] p-1 rounded-lg border border-[#E9E2D6]/15">
+              <button
+                type="button"
+                onClick={() => setMainSection('gestion')}
+                className={`w-full px-3 py-1.5 rounded-md text-xs font-semibold uppercase tracking-wider flex items-center justify-center gap-2 transition-colors ${
+                  mainSection === 'gestion'
+                    ? 'bg-[#9B1B30] text-[#FFFBF2]'
+                    : 'text-[#E9E2D6]/70 hover:text-[#FFFBF2]'
+                }`}
+              >
+                <LayoutGrid size={14} />
+                <span>Gestión</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setMainSection('solicitud')}
+                className={`w-full px-3 py-1.5 rounded-md text-xs font-semibold uppercase tracking-wider flex items-center justify-center gap-2 transition-colors ${
+                  mainSection === 'solicitud'
+                    ? 'bg-[#9B1B30] text-[#FFFBF2]'
+                    : 'text-[#E9E2D6]/70 hover:text-[#FFFBF2]'
+                }`}
+              >
+                <PlusCircle size={14} />
+                <span>Solicitud</span>
+              </button>
+            </div>
+
+            <div className="flex flex-col gap-1.5 justify-center">
+              <button
+                type="button"
+                onClick={onClose}
+                className="w-full px-3 py-1.5 rounded-lg border border-[#E9E2D6]/20 text-xs font-medium text-[#E9E2D6] hover:text-[#FFFBF2] hover:bg-[#2A2A2A] transition-colors flex items-center justify-center gap-1.5 whitespace-nowrap"
+                title="Minimizar panel y ver la página pública"
+              >
+                <X size={14} />
+                <span>Volver a la web</span>
+              </button>
+              <button
+                type="button"
+                onClick={onLogout}
+                className="w-full px-3 py-1.5 rounded-lg bg-red-950/60 hover:bg-red-900/80 border border-red-500/40 text-xs font-semibold uppercase tracking-wider text-red-200 transition-colors flex items-center justify-center gap-1.5 whitespace-nowrap"
+              >
+                <LogOut size={14} />
+                <span>Salir</span>
+              </button>
+            </div>
+          </div>
+        )}
       </header>
 
       {/* Main Content */}
-      <div className="flex-1 overflow-y-auto p-4 sm:p-8 max-w-7xl w-full mx-auto space-y-6">
+      <div
+        className={`flex-1 overflow-y-auto max-w-7xl w-full mx-auto ${
+          isLandscape ? 'p-3 sm:p-5 lg:p-8 space-y-4 lg:space-y-6' : 'p-4 space-y-5'
+        }`}
+      >
         {mainSection === 'solicitud' ? (
           /* ================= SOLICITUD (PARA USUARIOS AUTORIZADOS) ================= */
           <div className="max-w-2xl mx-auto glass-panel-dark rounded-2xl p-6 sm:p-8 border border-[#E9E2D6]/15 space-y-6">
@@ -540,7 +631,13 @@ export const WebReservationManagementModal: React.FC<WebReservationManagementMod
           /* ================= GESTIÓN ================= */
           <>
             {/* Metrics & Navigation Row */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
+            <div
+              className={`grid ${
+                isLandscape
+                  ? 'grid-cols-7 gap-2 lg:gap-3'
+                  : 'grid-cols-2 sm:grid-cols-4 gap-3'
+              }`}
+            >
               {(
                 [
                   {
@@ -611,20 +708,30 @@ export const WebReservationManagementModal: React.FC<WebReservationManagementMod
                       clearSubAction();
                       setActionFeedback(null);
                     }}
-                    className={`p-3.5 rounded-xl border text-left transition-colors ${
+                    className={`rounded-xl border text-left transition-colors min-w-0 ${
+                      isLandscape ? 'p-2.5 lg:p-3.5' : 'p-3.5'
+                    } ${
                       isSelected
                         ? item.activeClass
                         : `bg-[#1A1A1A] ${item.idleBorder}`
                     }`}
                   >
-                    <span className={`text-[10px] uppercase tracking-wider ${item.labelClass} block`}>
+                    <span
+                      className={`uppercase tracking-wider block truncate ${
+                        isLandscape ? 'text-[9px] lg:text-[10px]' : 'text-[10px]'
+                      } ${item.labelClass}`}
+                    >
                       {item.label}
                     </span>
-                    <div className="flex items-center justify-between">
-                      <strong className={`text-xl font-bold ${item.textClass}`}>
+                    <div className="flex items-center justify-between gap-1">
+                      <strong
+                        className={`font-bold ${
+                          isLandscape ? 'text-lg lg:text-xl' : 'text-xl'
+                        } ${item.textClass}`}
+                      >
                         {item.count}
                       </strong>
-                      <ChevronRight size={16} className={item.textClass} />
+                      <ChevronRight size={15} className={`shrink-0 ${item.textClass}`} />
                     </div>
                   </button>
                 );
@@ -636,20 +743,30 @@ export const WebReservationManagementModal: React.FC<WebReservationManagementMod
                   setShowCustomers(!showCustomers);
                   setSelectedCustomerId(null);
                 }}
-                className={`p-3.5 rounded-xl border text-left transition-colors ${
+                className={`rounded-xl border text-left transition-colors min-w-0 ${
+                  isLandscape ? 'p-2.5 lg:p-3.5' : 'p-3.5'
+                } ${
                   showCustomers
                     ? 'bg-[#9B1B30]/25 border-[#9B1B30]'
                     : 'bg-[#1A1A1A] border-[#E9E2D6]/15 hover:border-[#E3B87C]/50'
                 }`}
               >
-                <span className="text-[10px] uppercase tracking-wider text-[#E3B87C] block">
+                <span
+                  className={`uppercase tracking-wider text-[#E3B87C] block truncate ${
+                    isLandscape ? 'text-[9px] lg:text-[10px]' : 'text-[10px]'
+                  }`}
+                >
                   Clientes
                 </span>
-                <div className="flex items-center justify-between">
-                  <strong className="text-xl font-bold text-[#FFFBF2]">
+                <div className="flex items-center justify-between gap-1">
+                  <strong
+                    className={`font-bold text-[#FFFBF2] ${
+                      isLandscape ? 'text-lg lg:text-xl' : 'text-xl'
+                    }`}
+                  >
                     {stats?.totalUniqueCustomers ?? '—'}
                   </strong>
-                  <ChevronRight size={16} className="text-[#E3B87C]" />
+                  <ChevronRight size={15} className="text-[#E3B87C] shrink-0" />
                 </div>
               </button>
             </div>
@@ -690,8 +807,16 @@ export const WebReservationManagementModal: React.FC<WebReservationManagementMod
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                  <div className="lg:col-span-5 space-y-2 max-h-[480px] overflow-y-auto pr-1">
+                <div
+                  className={`grid gap-4 lg:gap-6 ${
+                    isLandscape ? 'grid-cols-12' : 'grid-cols-1'
+                  }`}
+                >
+                  <div
+                    className={`space-y-2 max-h-[480px] overflow-y-auto pr-1 ${
+                      isLandscape ? 'col-span-5' : ''
+                    }`}
+                  >
                     {customers === undefined ? (
                       <div className="py-8 text-center text-xs text-[#8A8380]">
                         <Loader2 className="w-5 h-5 animate-spin mx-auto mb-2" />
@@ -729,7 +854,11 @@ export const WebReservationManagementModal: React.FC<WebReservationManagementMod
                     )}
                   </div>
 
-                  <div className="lg:col-span-7 bg-[#121212]/70 rounded-xl border border-[#E9E2D6]/10 p-5">
+                  <div
+                    className={`bg-[#121212]/70 rounded-xl border border-[#E9E2D6]/10 p-5 ${
+                      isLandscape ? 'col-span-7' : ''
+                    }`}
+                  >
                     {!selectedCustomerId ? (
                       <div className="h-full flex items-center justify-center text-xs text-[#8A8380] py-12">
                         Selecciona un cliente para consultar su historial de reservaciones.
@@ -798,7 +927,7 @@ export const WebReservationManagementModal: React.FC<WebReservationManagementMod
               /* ================= APARTADOS DE RESERVACIONES ================= */
               <>
                 {/* Search & Date Filters */}
-                <div className="flex flex-col sm:flex-row gap-3">
+                <div className={`flex gap-3 ${isLandscape ? 'flex-row' : 'flex-col sm:flex-row'}`}>
                   <div className="relative flex-1">
                     <Search
                       size={15}
@@ -832,9 +961,19 @@ export const WebReservationManagementModal: React.FC<WebReservationManagementMod
                 </div>
 
                 {/* List + Detail Split */}
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                <div
+                  className={`grid items-start ${
+                    isLandscape ? 'grid-cols-12 gap-4 lg:gap-6' : 'grid-cols-1 gap-6'
+                  }`}
+                >
                   {/* List Column */}
-                  <div className="lg:col-span-5 space-y-2.5 max-h-[600px] overflow-y-auto pr-1">
+                  <div
+                    className={`space-y-2.5 overflow-y-auto pr-1 ${
+                      isLandscape
+                        ? 'col-span-5 max-h-[calc(100vh-220px)] lg:max-h-[600px]'
+                        : 'max-h-[420px]'
+                    }`}
+                  >
                     {reservations === undefined ? (
                       <div className="py-12 text-center text-xs text-[#8A8380]">
                         <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2 text-[#9B1B30]" />
@@ -907,7 +1046,11 @@ export const WebReservationManagementModal: React.FC<WebReservationManagementMod
                   </div>
 
                   {/* Detail & Actions Column */}
-                  <div className="lg:col-span-7 glass-panel-dark rounded-2xl p-6 border border-[#E9E2D6]/15">
+                  <div
+                    className={`glass-panel-dark rounded-2xl p-5 lg:p-6 border border-[#E9E2D6]/15 ${
+                      isLandscape ? 'col-span-7' : ''
+                    }`}
+                  >
                     {!selectedReservation ? (
                       <div className="py-16 text-center text-xs text-[#8A8380]">
                         Selecciona una reservación del listado para ver su detalle y gestionar su estado.
