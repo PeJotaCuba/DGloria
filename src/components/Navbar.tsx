@@ -5,11 +5,14 @@
 
 import React, { useState, useEffect } from 'react';
 import { ASSETS } from '../lib/assets';
-import { Menu, X, Calendar, Download } from 'lucide-react';
+import { Menu, X, Calendar, Download, LayoutGrid } from 'lucide-react';
 import { usePWAInstall } from '../hooks/usePWAInstall';
 import { InstallModalIOS } from './InstallModalIOS';
 import { useDeviceIdentity } from '../hooks/useDeviceIdentity';
 import { DeviceRegistrationModal } from './DeviceRegistrationModal';
+import { useWebAuth } from '../hooks/useWebAuth';
+import { WebAuthModal } from './WebAuthModal';
+import { WebReservationManagementModal } from './WebReservationManagementModal';
 
 interface NavbarProps {
   onNavigate?: (sectionId: string) => void;
@@ -36,16 +39,31 @@ export const Navbar: React.FC<NavbarProps> = ({ onNavigate }) => {
   }, []);
 
   // Device Identity Logic
-  const { dvc, status } = useDeviceIdentity();
+  const { dvc, status, error } = useDeviceIdentity();
   const [showDVCModal, setShowDVCModal] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showManagementModal, setShowManagementModal] = useState(false);
   const [pressTimer, setPressTimer] = useState<number | null>(null);
+
+  const {
+    token,
+    user,
+    isAuthenticated,
+    isLoggingIn,
+    authError,
+    setAuthError,
+    login,
+    logout,
+  } = useWebAuth(dvc, status);
 
   const handlePressStart = () => {
     const timer = window.setTimeout(() => {
-      // Si el estado es ACTIVE, no mostramos el panel de registro DVC
-      // (Reservado para futuro panel de autenticación)
       if (status !== 'ACTIVE') {
         setShowDVCModal(true);
+      } else if (isAuthenticated) {
+        setShowManagementModal(true);
+      } else {
+        setShowAuthModal(true);
       }
     }, 5000);
     setPressTimer(timer);
@@ -56,6 +74,17 @@ export const Navbar: React.FC<NavbarProps> = ({ onNavigate }) => {
       window.clearTimeout(pressTimer);
       setPressTimer(null);
     }
+  };
+
+  const handleWebLogin = async (username: string, password: string) => {
+    await login(username, password);
+    setShowAuthModal(false);
+    setShowManagementModal(true);
+  };
+
+  const handleWebLogout = async () => {
+    setShowManagementModal(false);
+    await logout();
   };
 
   const navItems = [
@@ -134,6 +163,17 @@ export const Navbar: React.FC<NavbarProps> = ({ onNavigate }) => {
 
           {/* Zone 3: Actions */}
           <div className="hidden md:flex items-center gap-3 shrink-0">
+            {isAuthenticated && (
+              <button
+                type="button"
+                onClick={() => setShowManagementModal(true)}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold uppercase tracking-wider text-[#E3B87C] hover:text-[#FFFBF2] bg-[#1E1E1E]/90 hover:bg-[#2A2A2A] border border-[#E3B87C]/40 rounded transition-all shadow-sm whitespace-nowrap shrink-0"
+              >
+                <LayoutGrid className="w-3.5 h-3.5" />
+                <span>Gestión</span>
+              </button>
+            )}
+
             {!isInstalled && (isInstallable || isIOS) && (
               <button
                 onClick={promptInstall}
@@ -203,6 +243,20 @@ export const Navbar: React.FC<NavbarProps> = ({ onNavigate }) => {
           </nav>
 
           <div className="pt-6 border-t border-[#E9E2D6]/10 flex flex-col gap-3">
+            {isAuthenticated && (
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  setShowManagementModal(true);
+                }}
+                className="w-full flex items-center justify-center gap-2 py-2.5 px-4 text-xs font-semibold uppercase tracking-wider text-[#E3B87C] bg-[#2A2A2A] hover:bg-[#333333] border border-[#E3B87C]/40 rounded transition-colors shadow-sm"
+              >
+                <LayoutGrid className="w-4 h-4" />
+                <span>Gestión de Reservas</span>
+              </button>
+            )}
+
             {!isInstalled && (isInstallable || isIOS) && (
               <button
                 onClick={() => {
@@ -243,6 +297,32 @@ export const Navbar: React.FC<NavbarProps> = ({ onNavigate }) => {
           onClose={() => setShowDVCModal(false)}
           dvc={dvc}
           status={status}
+          error={error}
+        />
+      )}
+
+      {/* WEB Authentication Modal (solo cuando DVC está ACTIVE) */}
+      {dvc && status === 'ACTIVE' && (
+        <WebAuthModal
+          isOpen={showAuthModal}
+          onClose={() => setShowAuthModal(false)}
+          dvc={dvc}
+          onLogin={handleWebLogin}
+          isLoggingIn={isLoggingIn}
+          authError={authError}
+          onClearError={() => setAuthError(null)}
+        />
+      )}
+
+      {/* WEB Reservation Management Modal */}
+      {dvc && isAuthenticated && token && user && (
+        <WebReservationManagementModal
+          isOpen={showManagementModal}
+          onClose={() => setShowManagementModal(false)}
+          sessionToken={token}
+          dvcCode={dvc}
+          user={user}
+          onLogout={handleWebLogout}
         />
       )}
     </>

@@ -2,8 +2,9 @@ import { ConvexHttpClient } from "convex/browser";
 import { ConvexReactClient } from "convex/react";
 import { api } from "../../convex/_generated/api";
 
-const CONVEX_URL =
+const RAW_CONVEX_URL =
   import.meta.env.VITE_CONVEX_URL || "https://unique-wolf-577.convex.cloud";
+const CONVEX_URL = RAW_CONVEX_URL.replace(/\.convex\.site\/?$/i, ".convex.cloud");
 
 export const convexReactClient = new ConvexReactClient(CONVEX_URL);
 export const convexHttpClient = new ConvexHttpClient(CONVEX_URL);

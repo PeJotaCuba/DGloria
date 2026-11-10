@@ -7,6 +7,7 @@ interface DeviceRegistrationModalProps {
   onClose: () => void;
   dvc: string;
   status: string;
+  error?: string | null;
 }
 
 export const DeviceRegistrationModal: React.FC<DeviceRegistrationModalProps> = ({
@@ -14,11 +15,13 @@ export const DeviceRegistrationModal: React.FC<DeviceRegistrationModalProps> = (
   onClose,
   dvc,
   status,
+  error,
 }) => {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(dvc);
+    const codeToCopy = dvc.startsWith('DVC-') ? dvc.replace('DVC-', '') : dvc;
+    navigator.clipboard.writeText(codeToCopy);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -82,6 +85,18 @@ export const DeviceRegistrationModal: React.FC<DeviceRegistrationModalProps> = (
                   {status === 'UNKNOWN' ? 'REGISTRANDO...' : status}
                 </span>
               </div>
+
+              {error === 'LOADING' && (
+                <div className="text-xs text-[#E9E2D6]/40 italic animate-pulse">
+                  Verificando estado en Convex...
+                </div>
+              )}
+
+              {error === 'NOT_FOUND' && (
+                <div className="bg-orange-500/10 border border-orange-500/20 rounded-lg p-3 text-orange-300 text-xs text-left">
+                  Este dispositivo aún no ha terminado de registrarse en la nube. Reintente en unos segundos.
+                </div>
+              )}
 
               {isInactive ? (
                 <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4 text-red-300 text-sm">

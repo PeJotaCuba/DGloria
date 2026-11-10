@@ -9,20 +9,11 @@ import {
   Users,
   Clock,
   MapPin,
-  CheckCircle2,
   Send,
   Loader2,
   AlertCircle,
   RotateCcw,
-  Search,
-  Copy,
-  Check,
-  ShieldCheck,
-  XCircle,
-  AlertTriangle,
-  FileCheck2,
   Sparkles,
-  ArrowRight,
   WifiOff,
 } from 'lucide-react';
 import { ReservationRequest } from '../lib/convex';
@@ -31,11 +22,11 @@ import { api } from '../../convex/_generated/api';
 import { getReservationStatusMeta } from '../utils/reservations';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
 
+const LAST_RES_ID_KEY = 'dg_last_public_res_id';
+
 export const ReservationSection: React.FC = () => {
   const isOnline = useOnlineStatus();
   const createReservation = useMutation(api.reservations.createPublicReservation);
-
-  const [activeTab, setActiveTab] = useState<'create' | 'lookup'>('create');
 
   // Form State
   const [formData, setFormData] = useState<ReservationRequest>({
@@ -50,27 +41,14 @@ export const ReservationSection: React.FC = () => {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [submittedData, setSubmittedData] = useState<{
-    id?: string;
-    fullName: string;
-    emailOrPhone: string;
-    date: string;
-    time: string;
-    partySize: number;
-    seatingArea: string;
-    trackingCode?: string;
-  } | null>(null);
+  const [activeReservationId, setActiveReservationId] = useState<string | null>(() =>
+    localStorage.getItem(LAST_RES_ID_KEY)
+  );
 
-  const [codeCopied, setCodeCopied] = useState(false);
-
-  // Lookup State
-  const [lookupInput, setLookupInput] = useState('');
-  const [activeQueryCode, setActiveQueryCode] = useState<string | null>(null);
-
-  // Reactive query for tracking code status
-  const lookupResult = useQuery(
+  // Consulta reactiva en tiempo real del estado de la solicitud enviada
+  const liveReservation = useQuery(
     api.reservations.getPublicReservationStatus,
-    activeQueryCode ? { trackingCode: activeQueryCode } : 'skip'
+    activeReservationId ? { id: activeReservationId } : 'skip'
   );
 
   const handleCreateSubmit = async (e: React.FormEvent) => {
@@ -105,16 +83,11 @@ export const ReservationSection: React.FC = () => {
         specialNotes: formData.specialNotes?.trim() || undefined,
       });
 
-      setSubmittedData({
-        id: result?.id || result?.reservationId,
-        fullName: trimmedName,
-        emailOrPhone: trimmedContact,
-        date: trimmedDate,
-        time: formData.time.trim(),
-        partySize: Number(formData.partySize) || 2,
-        seatingArea: formData.seatingArea || 'terraza',
-        trackingCode: result?.trackingCode,
-      });
+      const resId = result?.id || result?._id;
+      if (resId) {
+        localStorage.setItem(LAST_RES_ID_KEY, String(resId));
+        setActiveReservationId(String(resId));
+      }
     } catch (err: any) {
       console.error('Error al registrar la reservación en Convex:', err);
       const friendlyMsg =
@@ -127,9 +100,9 @@ export const ReservationSection: React.FC = () => {
   };
 
   const resetForm = () => {
-    setSubmittedData(null);
+    localStorage.removeItem(LAST_RES_ID_KEY);
+    setActiveReservationId(null);
     setErrorMessage(null);
-    setCodeCopied(false);
     setFormData({
       fullName: '',
       emailOrPhone: '',
@@ -139,27 +112,6 @@ export const ReservationSection: React.FC = () => {
       seatingArea: 'terraza',
       specialNotes: '',
     });
-  };
-
-  const handleCopyTrackingCode = (code?: string) => {
-    if (!code) return;
-    navigator.clipboard.writeText(code);
-    setCodeCopied(true);
-    setTimeout(() => setCodeCopied(false), 3000);
-  };
-
-  const handleLookupSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const cleaned = lookupInput.trim().toUpperCase();
-    if (!cleaned) return;
-    setActiveQueryCode(cleaned);
-  };
-
-  const handleCheckCodeNow = (code?: string) => {
-    if (!code) return;
-    const url = `/consulta?code=${code}`;
-    window.history.pushState({ path: url }, '', url);
-    window.dispatchEvent(new Event('popstate'));
   };
 
   const todayStr = new Date().toISOString().split('T')[0];
@@ -179,135 +131,123 @@ export const ReservationSection: React.FC = () => {
           </h2>
           <div className="w-16 h-0.5 bg-[#9B1B30] mx-auto mb-6" />
           <p className="text-base text-[#E9E2D6]/85 font-light leading-relaxed">
-            Anticipa tu llegada y asegura un lugar privilegiado en nuestra terraza, o consulta en tiempo real el estado de tu solicitud con tu código privado.
+            Anticipa tu llegada y asegura un lugar privilegiado en nuestra terraza. Al enviar tu solicitud, verás el estado de tu reservación actualizado en tiempo real aquí mismo.
           </p>
-        </div>
-
-        {/* Tab Switcher */}
-        <div className="max-w-md mx-auto mb-10 p-1.5 bg-[#121212]/90 border border-[#E9E2D6]/15 rounded-xl flex items-center justify-between gap-1 shadow-lg">
-          <button
-            type="button"
-            onClick={() => setActiveTab('create')}
-            className={`flex-1 py-3 px-4 text-xs uppercase font-semibold tracking-wider rounded-lg transition-all duration-200 flex items-center justify-center gap-2 ${
-              activeTab === 'create'
-                ? 'bg-[#9B1B30] text-[#FFFBF2] shadow-md'
-                : 'text-[#E9E2D6]/70 hover:text-[#FFFBF2] hover:bg-[#1E1E1E]'
-            }`}
-          >
-            <Calendar className="w-3.5 h-3.5" />
-            <span>Solicitar Reserva</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTab('lookup')}
-            className={`flex-1 py-3 px-4 text-xs uppercase font-semibold tracking-wider rounded-lg transition-all duration-200 flex items-center justify-center gap-2 ${
-              activeTab === 'lookup'
-                ? 'bg-[#9B1B30] text-[#FFFBF2] shadow-md'
-                : 'text-[#E9E2D6]/70 hover:text-[#FFFBF2] hover:bg-[#1E1E1E]'
-            }`}
-          >
-            <Search className="w-3.5 h-3.5" />
-            <span>Consulta tu Reservación</span>
-          </button>
         </div>
 
         {/* Reservation Box Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start">
           {/* Main Card Column */}
           <div className="lg:col-span-7 glass-panel-dark p-8 sm:p-10 rounded-lg">
-            {activeTab === 'create' ? (
-              submittedData ? (
-                <div className="text-center py-6 space-y-6">
-                  <div className="w-14 h-14 rounded-full bg-[#E3B87C]/20 text-[#E3B87C] border border-[#E3B87C]/40 flex items-center justify-center mx-auto shadow-md">
-                    <CheckCircle2 className="w-8 h-8 text-[#E3B87C]" />
-                  </div>
-
-                  <div className="space-y-2">
-                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#E3B87C]/15 border border-[#E3B87C]/30 text-[#E3B87C] text-xs font-semibold uppercase tracking-wider">
-                      <Clock className="w-3.5 h-3.5" />
-                      <span>Solicitud Recibida — Pendiente de Revisión</span>
-                    </div>
-                    <h3 className="font-serif text-2xl font-bold text-[#FFFBF2]">
-                      ¡Hemos recibido tu solicitud!
-                    </h3>
-                  </div>
-
-                  <p className="text-sm text-[#E9E2D6]/90 max-w-md mx-auto font-light leading-relaxed">
-                    Gracias por elegirnos, <strong>{submittedData.fullName}</strong>. Tu solicitud para{' '}
-                    <strong>{submittedData.partySize} personas</strong> el día <strong>{submittedData.date}</strong> a las{' '}
-                    <strong>{submittedData.time}</strong> ha quedado registrada en nuestro sistema de atención.
+            {activeReservationId ? (
+              liveReservation === undefined ? (
+                <div className="py-12 text-center space-y-3">
+                  <Loader2 className="w-8 h-8 animate-spin text-[#E3B87C] mx-auto" />
+                  <p className="text-xs text-[#E9E2D6]/80">
+                    Consultando el estado de tu reservación...
                   </p>
-
-                  {/* Tracking Code Highlight Box */}
-                  {submittedData.trackingCode && (
-                    <div className="p-5 bg-[#1E1E1E] border border-[#E3B87C]/40 rounded-lg shadow-inner text-center space-y-3 max-w-md mx-auto">
-                      <span className="text-[11px] uppercase tracking-widest text-[#E3B87C] font-semibold block flex items-center justify-center gap-1">
-                        <ShieldCheck className="w-4 h-4 text-[#E3B87C]" />
-                        <span>Código Privado de Seguimiento</span>
-                      </span>
-
-                      <div className="flex items-center justify-center gap-3">
-                        <span className="font-mono text-2xl font-bold tracking-widest text-[#FFFBF2] bg-[#121212] px-4 py-2 rounded border border-[#E3B87C]/30">
-                          {submittedData.trackingCode}
-                        </span>
-
-                        <button
-                          type="button"
-                          onClick={() => handleCopyTrackingCode(submittedData.trackingCode)}
-                          className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs uppercase font-semibold tracking-wider text-[#E9E2D6] bg-[#2A2A2A] hover:bg-[#333333] border border-[#E9E2D6]/20 rounded transition-all"
-                          title="Copiar código al portapapeles"
-                        >
-                          {codeCopied ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
-                          <span>{codeCopied ? '¡Copiado!' : 'Copiar'}</span>
-                        </button>
-                      </div>
-
-                      <p className="text-[11px] text-[#8A8380] leading-relaxed">
-                        Conserva este código privado para consultar el estado actualizado de tu solicitud en cualquier momento sin exponer tus datos personales.
-                      </p>
-                    </div>
-                  )}
-
-                  <div className="p-4 bg-[#1E1E1E]/90 border border-[#E9E2D6]/15 rounded text-xs text-[#E9E2D6]/80 max-w-md mx-auto text-left space-y-2">
-                    <div className="flex items-center justify-between text-[#8A8380] border-b border-[#E9E2D6]/10 pb-2">
-                      <span>Estado actual:</span>
-                      <span className="text-[#E3B87C] font-semibold uppercase tracking-wider text-[11px]">
-                        Pendiente de Confirmación
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between text-[#8A8380]">
-                      <span>Medio de contacto:</span>
-                      <strong className="text-[#FFFBF2] font-mono">{submittedData.emailOrPhone}</strong>
-                    </div>
-                    <p className="text-[11px] text-[#8A8380] pt-1 leading-normal border-t border-[#E9E2D6]/10">
-                      * Nuestro equipo revisará la disponibilidad de mesas y te contactará para confirmar tu reserva. Recibir esta solicitud no garantiza de forma inmediata la mesa.
-                    </p>
-                  </div>
-
-                  <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-3">
-                    {submittedData.trackingCode && (
-                      <button
-                        type="button"
-                        onClick={() => handleCheckCodeNow(submittedData.trackingCode)}
-                        className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 text-xs font-semibold uppercase tracking-wider text-white bg-[#9B1B30] hover:bg-[#801426] rounded transition-colors shadow-lg"
-                      >
-                        <Search className="w-3.5 h-3.5" />
-                        <span>Consultar Estado Ahora</span>
-                      </button>
-                    )}
-
-                    <button
-                      type="button"
-                      onClick={resetForm}
-                      className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 text-xs font-semibold uppercase tracking-wider text-[#E9E2D6] hover:text-[#FFFBF2] bg-[#1E1E1E] hover:bg-[#2A2A2A] border border-[#E9E2D6]/20 rounded transition-colors"
-                    >
-                      <RotateCcw className="w-3.5 h-3.5" />
-                      <span>Realizar otra solicitud</span>
-                    </button>
-                  </div>
+                </div>
+              ) : liveReservation === null ? (
+                <div className="text-center py-8 space-y-4">
+                  <AlertCircle className="w-8 h-8 text-amber-400 mx-auto" />
+                  <p className="text-sm text-[#E9E2D6]/85">
+                    No pudimos encontrar el registro de esta reservación.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={resetForm}
+                    className="inline-flex items-center gap-2 px-5 py-2.5 text-xs font-semibold uppercase tracking-wider text-white bg-[#9B1B30] hover:bg-[#801426] rounded"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    <span>Nueva Solicitud</span>
+                  </button>
                 </div>
               ) : (
+                (() => {
+                  const statusMeta = getReservationStatusMeta(liveReservation.status);
+                  const StatusIcon = statusMeta.icon;
+                  return (
+                    <div className="space-y-6">
+                      <div className="text-center space-y-3">
+                        <div
+                          className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full border text-xs font-semibold uppercase tracking-wider ${statusMeta.badgeClass}`}
+                        >
+                          <StatusIcon className="w-4 h-4 shrink-0" />
+                          <span>{statusMeta.label}</span>
+                        </div>
+                        <h3 className="font-serif text-2xl font-bold text-[#FFFBF2]">
+                          {statusMeta.title}
+                        </h3>
+                        <p className="text-sm text-[#E9E2D6]/90 max-w-md mx-auto font-light leading-relaxed">
+                          {statusMeta.desc}
+                        </p>
+                      </div>
+
+                      {liveReservation.tableNumber && (
+                        <div className="p-4 bg-emerald-950/40 border border-emerald-500/30 rounded-lg text-xs text-emerald-200 flex items-center gap-2.5 max-w-md mx-auto">
+                          <Sparkles className="w-4 h-4 text-emerald-400 shrink-0" />
+                          <span>
+                            <strong>Mesa asignada:</strong> Mesa #{liveReservation.tableNumber}
+                          </span>
+                        </div>
+                      )}
+
+                      {(liveReservation.alternativeDate || liveReservation.alternativeTime) && (
+                        <div className="p-4 bg-indigo-950/40 border border-indigo-500/30 rounded-lg text-xs text-indigo-200 max-w-md mx-auto space-y-1">
+                          <span className="font-semibold block uppercase tracking-wider text-[11px] text-indigo-300">
+                            Propuesta Alternativa del Local:
+                          </span>
+                          <p>
+                            {liveReservation.alternativeDate && `Fecha: ${liveReservation.alternativeDate}`}
+                            {liveReservation.alternativeTime && ` · Horario: ${liveReservation.alternativeTime}`}
+                          </p>
+                          {liveReservation.alternativeNotes && (
+                            <p className="text-indigo-200/80">{liveReservation.alternativeNotes}</p>
+                          )}
+                        </div>
+                      )}
+
+                      {liveReservation.rejectionReason && (
+                        <div className="p-4 bg-red-950/40 border border-red-500/30 rounded-lg text-xs text-red-200 max-w-md mx-auto">
+                          <strong className="block font-semibold mb-0.5">Detalle:</strong>
+                          <span>{liveReservation.rejectionReason}</span>
+                        </div>
+                      )}
+
+                      <div className="p-4 bg-[#1E1E1E]/90 border border-[#E9E2D6]/15 rounded-lg text-xs text-[#E9E2D6]/85 max-w-md mx-auto grid grid-cols-2 gap-3">
+                        <div>
+                          <span className="text-[10px] uppercase text-[#8A8380] block">Titular</span>
+                          <strong className="text-[#FFFBF2]">{liveReservation.fullName}</strong>
+                        </div>
+                        <div>
+                          <span className="text-[10px] uppercase text-[#8A8380] block">Personas</span>
+                          <strong className="text-[#FFFBF2]">{liveReservation.partySize} personas</strong>
+                        </div>
+                        <div>
+                          <span className="text-[10px] uppercase text-[#8A8380] block">Fecha</span>
+                          <strong className="text-[#FFFBF2]">{liveReservation.date}</strong>
+                        </div>
+                        <div>
+                          <span className="text-[10px] uppercase text-[#8A8380] block">Horario</span>
+                          <strong className="text-[#FFFBF2]">{liveReservation.time}</strong>
+                        </div>
+                      </div>
+
+                      <div className="text-center pt-2">
+                        <button
+                          type="button"
+                          onClick={resetForm}
+                          className="inline-flex items-center justify-center gap-2 px-6 py-3 text-xs font-semibold uppercase tracking-wider text-[#E9E2D6] hover:text-[#FFFBF2] bg-[#1E1E1E] hover:bg-[#2A2A2A] border border-[#E9E2D6]/20 rounded transition-colors"
+                        >
+                          <RotateCcw className="w-3.5 h-3.5" />
+                          <span>Realizar otra solicitud</span>
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })()
+              )
+            ) : (
                 /* Reservation Creation Form */
                 <form onSubmit={handleCreateSubmit} className="space-y-6">
                   {errorMessage && (
@@ -467,210 +407,6 @@ export const ReservationSection: React.FC = () => {
                     </button>
                   </div>
                 </form>
-              )
-            ) : (
-              /* Reservation Lookup Experience */
-              <div className="space-y-6">
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-[#E3B87C] text-xs font-semibold uppercase tracking-wider">
-                    <ShieldCheck className="w-4 h-4" />
-                    <span>Consulta Privada de Estado</span>
-                  </div>
-                  <h3 className="font-serif text-2xl font-bold text-[#FFFBF2]">
-                    Verifica el estado de tu reservación
-                  </h3>
-                  <p className="text-xs text-[#E9E2D6]/80 font-light leading-relaxed">
-                    Ingresa el código privado de seguimiento recibido al enviar tu solicitud (ejemplo:{' '}
-                    <span className="font-mono text-[#E3B87C]">DG-8X2K9M</span>).
-                  </p>
-                </div>
-
-                <form onSubmit={handleLookupSubmit} className="space-y-4">
-                  <div>
-                    <label className="block text-xs font-medium uppercase tracking-wider text-[#E9E2D6] mb-2">
-                      Código Privado de Seguimiento
-                    </label>
-                    <div className="flex flex-col sm:flex-row gap-3">
-                      <input
-                        type="text"
-                        required
-                        placeholder="Ej. DG-8X2K9M"
-                        value={lookupInput}
-                        onChange={(e) => setLookupInput(e.target.value.toUpperCase())}
-                        className="flex-1 bg-[#1E1E1E]/90 border border-[#E9E2D6]/20 rounded px-4 py-3 text-sm text-[#FFFBF2] placeholder-[#8A8380] uppercase font-mono tracking-wider focus:outline-none focus:border-[#9B1B30]"
-                      />
-                      <button
-                        type="submit"
-                        disabled={!isOnline}
-                        className="px-6 py-3 text-xs font-semibold uppercase tracking-wider text-white bg-[#9B1B30] hover:bg-[#801426] disabled:opacity-50 disabled:cursor-not-allowed transition-colors rounded shadow-lg flex items-center justify-center gap-2 whitespace-nowrap"
-                      >
-                        {isOnline ? (
-                          <>
-                            <Search className="w-4 h-4" />
-                            <span>Consultar Estado</span>
-                          </>
-                        ) : (
-                          <>
-                            <WifiOff className="w-4 h-4" />
-                            <span>Sin Conexión</span>
-                          </>
-                        )}
-                      </button>
-                    </div>
-                    {!isOnline && (
-                      <p className="text-[11px] text-[#E3B87C] mt-2 flex items-center gap-1.5 font-light">
-                        <WifiOff className="w-3.5 h-3.5 shrink-0" />
-                        <span>La consulta en tiempo real del registro en Convex requiere conexión a internet.</span>
-                      </p>
-                    )}
-                  </div>
-                </form>
-
-                {/* Lookup Results Display */}
-                {activeQueryCode && (
-                  <div className="pt-4 border-t border-[#E9E2D6]/15" key={`lookup-result-${activeQueryCode}`}>
-                    {lookupResult === undefined ? (
-                      <div className="py-8 text-center space-y-3">
-                        <Loader2 className="w-6 h-6 animate-spin text-[#E3B87C] mx-auto" />
-                        <span className="text-xs text-[#E9E2D6]/70 block font-light">
-                          Consultando registro en Convex...
-                        </span>
-                      </div>
-                    ) : !lookupResult?.found ? (
-                      <div className="p-5 bg-amber-900/20 border border-amber-500/30 rounded-lg text-xs space-y-2">
-                        <div className="flex items-center gap-2 text-amber-300 font-semibold uppercase tracking-wider">
-                          <AlertCircle className="w-4 h-4 shrink-0" />
-                          <span>Código no encontrado</span>
-                        </div>
-                        <p className="text-[#E9E2D6]/90 font-light leading-relaxed">
-                          {lookupResult?.message ||
-                            'No se encontró ninguna reservación con el código ingresado.'}
-                        </p>
-                        <p className="text-[11px] text-[#8A8380] pt-1 leading-normal border-t border-amber-500/20">
-                          * Nota: Las reservaciones anteriores a la habilitación de códigos privados de seguimiento o tomadas telefónicamente no disponen de consulta digital por código.
-                        </p>
-                      </div>
-                    ) : (
-                      (() => {
-                        const statusMeta = getReservationStatusMeta(lookupResult.status);
-                        const StatusIcon = statusMeta.icon;
-
-                        return (
-                          <div className="p-6 bg-[#1E1E1E]/95 border border-[#E9E2D6]/15 rounded-lg space-y-5 shadow-lg">
-                            {/* Status Header Badge */}
-                            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#E9E2D6]/10 pb-4">
-                              <div className="space-y-1">
-                                <span className="text-[10px] uppercase tracking-widest text-[#8A8380] block font-semibold">
-                                  Estado Actual
-                                </span>
-                                <div
-                                  className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-semibold tracking-wider uppercase ${statusMeta.badgeClass}`}
-                                >
-                                  <StatusIcon className="w-4 h-4 shrink-0" />
-                                  <span>{statusMeta.label}</span>
-                                </div>
-                              </div>
-
-                              <div className="text-right">
-                                <span className="text-[10px] uppercase tracking-widest text-[#8A8380] block">
-                                  Código
-                                </span>
-                                <span className="font-mono text-xs font-bold text-[#FFFBF2]">
-                                  {activeQueryCode}
-                                </span>
-                              </div>
-                            </div>
-
-                            {/* Status Explanation */}
-                            <div className="space-y-2">
-                              <div className="flex items-center justify-between">
-                                <h4 className="font-serif text-lg font-bold text-[#FFFBF2]">
-                                  {statusMeta.title}
-                                </h4>
-                                <span className="text-[9px] text-[#8A8380] font-mono">
-                                  Actualizado: {new Date(lookupResult.updatedAt).toLocaleTimeString()}
-                                </span>
-                              </div>
-                              <p className="text-xs text-[#E9E2D6]/90 font-light leading-relaxed">
-                                {statusMeta.desc}
-                              </p>
-
-                              {/* Negotiation proposed details */}
-                              {(lookupResult.proposedDate || lookupResult.proposedTime) && (
-                                <div className="p-3 bg-indigo-950/40 border border-indigo-500/30 rounded text-xs text-indigo-200 mt-2 space-y-1">
-                                  <span className="font-semibold block uppercase tracking-wider text-[11px] text-indigo-300">
-                                    Propuesta del Establecimiento:
-                                  </span>
-                                  <span>
-                                    {lookupResult.proposedDate && `Fecha: ${lookupResult.proposedDate}`}
-                                    {lookupResult.proposedTime && ` · Horario: ${lookupResult.proposedTime}`}
-                                  </span>
-                                </div>
-                              )}
-
-                              {/* Confirmed table assignment */}
-                              {lookupResult.assignedTable && (
-                                <div className="p-3 bg-emerald-950/40 border border-emerald-500/30 rounded text-xs text-emerald-200 mt-2 flex items-center gap-2">
-                                  <Sparkles className="w-4 h-4 text-emerald-400 shrink-0" />
-                                  <span>
-                                    <strong>Mesa asignada:</strong> {lookupResult.assignedTable}
-                                  </span>
-                                </div>
-                              )}
-
-                              {/* Rejection reason */}
-                              {lookupResult.statusReason && (
-                                <div className="p-3 bg-red-950/40 border border-red-500/30 rounded text-xs text-red-200 mt-2">
-                                  <strong className="block font-semibold mb-0.5">Detalle:</strong>
-                                  <span>{lookupResult.statusReason}</span>
-                                </div>
-                              )}
-                            </div>
-
-                            {/* Reservation Details Summary */}
-                            <div className="pt-4 border-t border-[#E9E2D6]/10 grid grid-cols-2 sm:grid-cols-3 gap-4 text-xs text-[#E9E2D6]/80">
-                              <div>
-                                <span className="text-[10px] uppercase tracking-wider text-[#8A8380] block">
-                                  Titular
-                                </span>
-                                <strong className="text-[#FFFBF2]">{lookupResult.fullName}</strong>
-                              </div>
-
-                              <div>
-                                <span className="text-[10px] uppercase tracking-wider text-[#8A8380] block">
-                                  Fecha Solicitada
-                                </span>
-                                <strong className="text-[#FFFBF2]">{lookupResult.date}</strong>
-                              </div>
-
-                              <div>
-                                <span className="text-[10px] uppercase tracking-wider text-[#8A8380] block">
-                                  Horario
-                                </span>
-                                <strong className="text-[#FFFBF2]">{lookupResult.time}</strong>
-                              </div>
-
-                              <div>
-                                <span className="text-[10px] uppercase tracking-wider text-[#8A8380] block">
-                                  Comensales
-                                </span>
-                                <strong className="text-[#FFFBF2]">{lookupResult.partySize} personas</strong>
-                              </div>
-
-                              <div>
-                                <span className="text-[10px] uppercase tracking-wider text-[#8A8380] block">
-                                  Área
-                                </span>
-                                <strong className="text-[#FFFBF2] capitalize">{lookupResult.seatingArea}</strong>
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })()
-                    )}
-                  </div>
-                )}
-              </div>
             )}
           </div>
 
@@ -690,7 +426,7 @@ export const ReservationSection: React.FC = () => {
                 <div className="flex items-start gap-3">
                   <span className="text-[#9B1B30] font-bold text-sm">·</span>
                   <div>
-                    <strong className="text-[#FFFBF2]">Código Privado:</strong> Al solicitar tu reserva, se genera un código privado de seguimiento. Guárdalo para consultar el estado en cualquier momento.
+                    <strong className="text-[#FFFBF2]">Seguimiento en Tiempo Real:</strong> Al enviar tu solicitud, el estado de tu reservación se actualiza automáticamente en esta misma pantalla.
                   </div>
                 </div>
 

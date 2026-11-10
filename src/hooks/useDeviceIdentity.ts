@@ -20,7 +20,7 @@ export function useDeviceIdentity() {
   const [dvc, setDvc] = useState<string | null>(() => localStorage.getItem(STORAGE_KEY));
   const register = useMutation(api.browserDevices.registerBrowserDevice);
   
-  // Consulta de estado en tiempo real
+  // Consulta de estado en tiempo real con manejo de errores implícito
   const statusData = useQuery(
     api.browserDevices.getBrowserDeviceStatus,
     dvc ? { dvcCode: dvc } : "skip"
@@ -37,13 +37,15 @@ export function useDeviceIdentity() {
     }
 
     try {
-      await register({
-        dvcCode: currentDvc,
-        userAgent: navigator.userAgent,
-      });
+      if (register) {
+        await register({
+          dvcCode: currentDvc,
+          userAgent: navigator.userAgent,
+        });
+      }
     } catch (error) {
-      console.warn('[DVC] Error registrando dispositivo en Convex:', error);
-      // No bloqueamos la ejecución, se reintentará en la siguiente carga
+      console.error('[DVC] Error registrando dispositivo en Convex:', error);
+      // No bloqueamos la ejecución, permitimos que la página siga funcionando
     }
   }, [register]);
 
@@ -56,5 +58,6 @@ export function useDeviceIdentity() {
     status: statusData?.status || 'UNKNOWN',
     isRegistered: !!statusData,
     refreshRegistration: initializeDevice,
+    error: statusData === undefined ? 'LOADING' : (statusData === null ? 'NOT_FOUND' : null)
   };
 }
