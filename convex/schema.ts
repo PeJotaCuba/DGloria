@@ -302,7 +302,8 @@ export default defineSchema({
       v.literal("Confirmado"),
       v.literal("Consolidado"),
       v.literal("Rechazado"),
-      v.literal("Marcada")
+      v.literal("Marcada"),
+      v.literal("Cancelado")
     ),
     alternativeDate: v.optional(v.string()), // Fecha alternativa propuesta en negociación
     alternativeTime: v.optional(v.string()), // Hora alternativa propuesta en negociación
@@ -317,6 +318,9 @@ export default defineSchema({
     rejectionReason: v.optional(v.string()), // Motivo de rechazo o cancelación
     rejectedAt: v.optional(v.number()), // Marca de tiempo de rechazo
     rejectedByUserId: v.optional(v.string()), // Usuario que rechazó
+    cancelledAt: v.optional(v.number()), // Marca de tiempo de cancelación
+    cancelledByUserId: v.optional(v.string()), // Usuario que canceló
+    cancellationReason: v.optional(v.string()), // Motivo opcional de cancelación
     consolidatedAt: v.optional(v.number()), // Marca de tiempo de llegada y consolidación
     consolidatedByUserId: v.optional(v.string()), // Usuario que consolidó
     markedAt: v.optional(v.number()), // Marca de tiempo de marcado
@@ -446,7 +450,6 @@ export default defineSchema({
     cashierConsolidationId: v.optional(v.string()),
     kitchenConsolidationId: v.optional(v.string()),
     waiterConsolidationId: v.optional(v.string()),
-    bartenderConsolidationId: v.optional(v.string()),
     jornadaId: v.optional(v.string()), // Identificador de la jornada operativa actual
     updatedAt: v.optional(v.number()), // Marca de tiempo para control de concurrencia optimista
   })
@@ -464,7 +467,6 @@ export default defineSchema({
     .index("by_cashier_and_paidAt", ["cashierUserId", "paidAt"]) // Auditoría de cobros por cajero
     .index("by_kitchenConsolidation", ["kitchenConsolidationId"])
     .index("by_waiterConsolidation", ["waiterConsolidationId"])
-    .index("by_bartenderConsolidation", ["bartenderConsolidationId"])
     .index("by_active_jornada", ["isConsolidated", "jornadaId"]),
 
   // ==========================================
@@ -866,42 +868,7 @@ export default defineSchema({
     .index("by_cashierUserId", ["cashierUserId"])
     .index("by_idempotencyKey", ["idempotencyKey"]),
 
-  // ==========================================
-  // CONSOLIDACIONES DE JORNADA DE BARTENDER (ETAPA 6.4)
-  // ==========================================
-  bartender_consolidations: defineTable({
-    id: v.string(), // UUID de la consolidación
-    jornadaId: v.string(), // Identificador estable de la jornada (e.g. "jornada-2026-11-03")
-    dateStr: v.string(), // Fecha en formato YYYY-MM-DD
-    consolidatedAt: v.number(), // Epoch ms
-    bartenderUserId: v.string(), // ID del usuario bartender responsable
-    bartenderUserName: v.string(), // Nombre del usuario responsable
-    totalOrdersReceived: v.number(),
-    totalAmountReceived: v.number(),
-    totalOrdersDelivered: v.number(),
-    totalAmountDelivered: v.number(),
-    totalOrdersPending: v.number(),
-    totalAmountPending: v.number(),
-    totalOrdersCancelled: v.number(),
-    totalAmountCancelled: v.number(),
-    orders: v.array(v.any()), // Snapshot completo de las órdenes clasificadas (solo ítems de barra)
-    aggregatedDishes: v.array(
-      v.object({
-        menuItemId: v.string(),
-        itemName: v.string(),
-        quantity: v.number(),
-        totalCup: v.number(),
-      })
-    ),
-    idempotencyKey: v.string(), // Clave de idempotencia única
-    notes: v.optional(v.string()),
-  })
-    .index("by_custom_id", ["id"])
-    .index("by_jornadaId", ["jornadaId"])
-    .index("by_dateStr", ["dateStr"])
-    .index("by_consolidatedAt", ["consolidatedAt"])
-    .index("by_bartenderUserId", ["bartenderUserId"])
-    .index("by_idempotencyKey", ["idempotencyKey"]),
+
 
   // ==========================================
   // CONSOLIDACIONES DE JORNADA DE DEPENDIENTE

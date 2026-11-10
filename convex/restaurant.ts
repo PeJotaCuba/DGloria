@@ -425,7 +425,7 @@ export const listBartenderOrders = query({
     );
 
     return sorted
-      .filter((o) => o.bartenderConsolidationId === undefined && o.items.some((it) => it.station === "BARTENDER"))
+      .filter((o) => o.items.some((it) => it.station === "BARTENDER"))
       .map((o) => ({
         ...o,
         items: o.items.filter((it) => it.station === "BARTENDER"),
@@ -3949,13 +3949,19 @@ export const consolidateCashierShift = mutation({
       notes: args.notes,
     });
 
-    // b. RETIRADA FÍSICA DE LOS DOCUMENTOS TRANSITARIOS EN LA MISMA TRANSACCIÓN
+    // b. MARCADO DE DOCUMENTOS TRANSITARIOS COMO CONSOLIDADOS (PARA PERMANENCIA)
     for (const payment of activePayments) {
-      await ctx.db.delete(payment._id);
+      await ctx.db.patch(payment._id, {
+        cashierConsolidationId: consId,
+        isConsolidated: true
+      });
     }
 
     for (const req of processedRequests) {
-      await ctx.db.delete(req._id);
+      await ctx.db.patch(req._id, {
+        cashierConsolidationId: consId,
+        isConsolidated: true
+      });
     }
 
     // 5. Informe para el Dueño
@@ -4019,23 +4025,38 @@ export const consolidateCashierShift = mutation({
       idempotencyKey: args.idempotencyKey,
     });
 
-    // 6. Marcar las órdenes originales como consolidadas por Caja
-    if (args.ordersPaid && Array.isArray(args.ordersPaid)) {
-      for (const orderSnapshot of args.ordersPaid) {
-        if (orderSnapshot.id) {
-          const orderDoc = await ctx.db
-            .query("restaurant_orders")
-            .withIndex("by_custom_id", (q) => q.eq("id", orderSnapshot.id))
-            .first();
-          
-          if (orderDoc && !orderDoc.cashierConsolidationId) {
-            await ctx.db.patch(orderDoc._id, {
-              cashierConsolidationId: consId,
-              isConsolidated: true,
-              updatedAt: now
-            });
-          }
+    // 6. Marcar todas las órdenes pagadas, canceladas o de pagos activos como consolidadas por Caja
+    const allPaidOrderIds = new Set<string>();
+    for (const p of archivedPayments) {
+      if (p.orderId) allPaidOrderIds.add(p.orderId);
+      if (p.orderIds && Array.isArray(p.orderIds)) {
+        for (const oid of p.orderIds) {
+          if (oid) allPaidOrderIds.add(oid);
         }
+      }
+    }
+    if (args.ordersPaid && Array.isArray(args.ordersPaid)) {
+      for (const op of args.ordersPaid) {
+        if (op && op.id) allPaidOrderIds.add(op.id);
+      }
+    }
+
+    const unconsOrders = await ctx.db
+      .query("restaurant_orders")
+      .filter((q) => q.eq(q.field("cashierConsolidationId"), undefined))
+      .collect();
+
+    for (const orderDoc of unconsOrders) {
+      if (
+        allPaidOrderIds.has(orderDoc.id) ||
+        orderDoc.status === "PAGADO" ||
+        orderDoc.status === "CANCELADO"
+      ) {
+        await ctx.db.patch(orderDoc._id, {
+          cashierConsolidationId: consId,
+          isConsolidated: true,
+          updatedAt: now,
+        });
       }
     }
 
@@ -4296,201 +4317,7 @@ export {
 
 
 // ==========================================
-// CONSOLIDACIÓN DE JORNADA DE BARTENDER Y REPORTE AL DUEÑO (ETAPA 6.4)
-// ==========================================
 
-export const consolidateBartenderShift = mutation({
-  args: {
-    sessionToken: v.optional(v.string()),
-    bartenderUserId: v.string(),
-    bartenderUserName: v.string(),
-    jornadaId: v.string(),
-    dateStr: v.string(),
-    totalOrdersReceived: v.number(),
-    totalAmountReceived: v.number(),
-    totalOrdersDelivered: v.number(),
-    totalAmountDelivered: v.number(),
-    totalOrdersPending: v.number(),
-    totalAmountPending: v.number(),
-    totalOrdersCancelled: v.number(),
-    totalAmountCancelled: v.number(),
-    orders: v.array(v.any()),
-    aggregatedDishes: v.array(
-      v.object({
-        menuItemId: v.string(),
-        itemName: v.string(),
-        quantity: v.number(),
-        totalCup: v.number(),
-      })
-    ),
-    idempotencyKey: v.string(),
-    notes: v.optional(v.string()),
-    userId: v.optional(v.string()),
-  },
-  handler: async (ctx, args) => {
-    // Autenticación de personal autorizado (Bartender o Administración)
-    await authorizeUser(
-      ctx,
-      { sessionToken: args.sessionToken, userId: args.bartenderUserId },
-      ["ADMIN_GENERAL", "DUENO"],
-      { actionDescription: "consolidar jornada de bartender" }
-    );
-
-    // 1. Idempotencia estricta
-    const existingConsolidation = await ctx.db
-      .query("bartender_consolidations")
-      .withIndex("by_idempotencyKey", (q) => q.eq("idempotencyKey", args.idempotencyKey))
-      .first();
-
-    if (existingConsolidation) {
-      return {
-        success: true,
-        consolidationId: existingConsolidation.id,
-        jornadaId: existingConsolidation.jornadaId,
-        isDuplicate: true,
-      };
-    }
-
-    const now = Date.now();
-    const consId = crypto.randomUUID();
-
-    // 2. Guardar en el Archivo de Bartender
-    await ctx.db.insert("bartender_consolidations", {
-      id: consId,
-      jornadaId: args.jornadaId,
-      dateStr: args.dateStr,
-      consolidatedAt: now,
-      bartenderUserId: args.bartenderUserId,
-      bartenderUserName: args.bartenderUserName,
-      totalOrdersReceived: args.totalOrdersReceived,
-      totalAmountReceived: args.totalAmountReceived,
-      totalOrdersDelivered: args.totalOrdersDelivered,
-      totalAmountDelivered: args.totalAmountDelivered,
-      totalOrdersPending: args.totalOrdersPending,
-      totalAmountPending: args.totalAmountPending,
-      totalOrdersCancelled: args.totalOrdersCancelled,
-      totalAmountCancelled: args.totalAmountCancelled,
-      orders: args.orders,
-      aggregatedDishes: args.aggregatedDishes,
-      idempotencyKey: args.idempotencyKey,
-      notes: args.notes,
-    });
-
-    // 3. Identificar la cuenta real del Dueño
-    let ownerUser = await ctx.db
-      .query("users")
-      .withIndex("by_username", (q) => q.eq("username", "dueno"))
-      .first();
-
-    if (!ownerUser) {
-      ownerUser = await ctx.db
-        .query("users")
-        .withIndex("by_custom_id", (q) => q.eq("id", "u-dueno"))
-        .first();
-    }
-
-    const reportId = crypto.randomUUID();
-
-    // 4. Registrar el informe para el Dueño
-    await ctx.db.insert("owner_reports", {
-      id: reportId,
-      reportType: "BARTENDER",
-      targetAudience: "DUEÑO",
-      targetOwnerUserId: ownerUser ? ownerUser.id : "u-dueno",
-      targetOwnerUserName: ownerUser ? ownerUser.fullName : "Dueno",
-      sourceModule: "BARRA",
-      sourceUserId: args.bartenderUserId,
-      sourceUserName: args.bartenderUserName,
-      jornadaId: args.jornadaId,
-      dateStr: args.dateStr,
-      createdAt: now,
-      status: "PENDIENTE_REVISION",
-      summary: {
-        totalOrdersReceived: args.totalOrdersReceived,
-        totalAmountReceived: args.totalAmountReceived,
-        totalOrdersDelivered: args.totalOrdersDelivered,
-        totalAmountDelivered: args.totalAmountDelivered,
-        totalOrdersPending: args.totalOrdersPending,
-        totalAmountPending: args.totalAmountPending,
-        totalOrdersCancelled: args.totalOrdersCancelled,
-        totalAmountCancelled: args.totalAmountCancelled,
-      },
-      details: {
-        orders: args.orders,
-        aggregatedDishes: args.aggregatedDishes,
-        notes: args.notes,
-      },
-      idempotencyKey: args.idempotencyKey,
-    });
-
-    // 5. Enviar notificación al Dueño
-    await ctx.db.insert("notifications", {
-      id: crypto.randomUUID(),
-      title: "Informe de Cierre de Jornada — Bartender",
-      message: `El Bartender ${args.bartenderUserName} ha cerrado su jornada (${args.dateStr}). Recibidas: ${args.totalOrdersReceived}, Completadas: ${args.totalOrdersDelivered}, Importe: $${args.totalAmountDelivered.toFixed(2)} CUP.`,
-      targetRole: "DUENO",
-      timestamp: now,
-      isRead: false,
-    });
-
-    // 6. Marcar las órdenes originales como consolidadas por Bartender
-    if (args.orders && Array.isArray(args.orders)) {
-      for (const orderSnapshot of args.orders) {
-        if (orderSnapshot.id) {
-          const orderDoc = await ctx.db
-            .query("restaurant_orders")
-            .withIndex("by_custom_id", (q) => q.eq("id", orderSnapshot.id))
-            .first();
-          
-          if (orderDoc && !orderDoc.bartenderConsolidationId) {
-            await ctx.db.patch(orderDoc._id, {
-              bartenderConsolidationId: consId,
-              updatedAt: now
-            });
-          }
-        }
-      }
-    }
-
-    // 7. Registrar log de auditoría
-    await ctx.db.insert("audit_logs", {
-      id: crypto.randomUUID(),
-      userId: args.bartenderUserId,
-      userName: args.bartenderUserName,
-      module: "BAR",
-      action: "CIERRE_JORNADA_BARTENDER",
-      entityId: consId,
-      result: "SUCCESS",
-      timestamp: now,
-      isOutsideShift: false,
-    });
-
-    return { success: true, consolidationId: consId, reportId: reportId };
-  },
-});
-
-export const listBartenderConsolidations = query({
-  args: {
-    sessionToken: v.optional(v.string()),
-    userId: v.optional(v.string()),
-  },
-  handler: async (ctx, args) => {
-    const { user } = await authorizeUser(
-      ctx,
-      { sessionToken: args.sessionToken, userId: args.userId },
-      ["ADMIN_GENERAL", "DUENO"],
-      { actionDescription: "consultar histórico de cierres de bartender" }
-    );
-
-    const items = await ctx.db
-      .query("bartender_consolidations")
-      .withIndex("by_consolidatedAt")
-      .order("desc")
-      .collect();
-
-    return items;
-  },
-});
 
 export const purgeLegacyTestOrders = mutation({
   args: {
@@ -4709,11 +4536,9 @@ export const consolidateWaiterShift = mutation({
       cancellationReason: ord.cancellationReason,
       cancelledByUserId: ord.cancelledByUserId,
       idempotencyKey: ord.idempotencyKey,
-      isConsolidated: true,
       cashierConsolidationId: ord.cashierConsolidationId || cashierConsolidation?.id,
       kitchenConsolidationId: ord.kitchenConsolidationId || kitchenConsolidation?.id,
       waiterConsolidationId: consId,
-      bartenderConsolidationId: ord.bartenderConsolidationId,
       updatedAt: ord.updatedAt || now,
     }));
 
@@ -4865,27 +4690,71 @@ export const listWaiterConsolidations = query({
   args: {
     sessionToken: v.optional(v.string()),
     waiterUserId: v.optional(v.string()),
+    userId: v.optional(v.string()),
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    if (args.waiterUserId) {
-      let list = await ctx.db
-        .query("waiter_consolidations")
-        .withIndex("by_waiterUserId", (q) => q.eq("waiterUserId", args.waiterUserId!))
-        .order("desc")
-        .collect();
-      if (args.limit) list = list.slice(0, args.limit);
-      return list;
-    }
+    const { user } = await authorizeUser(
+      ctx,
+      { sessionToken: args.sessionToken, userId: args.userId || args.waiterUserId },
+      ["ADMIN_GENERAL", "DUENO", "DEPENDIENTE"],
+      { actionDescription: "consultar consolidaciones de dependiente" }
+    );
+
     let consolidations = await ctx.db
       .query("waiter_consolidations")
       .withIndex("by_consolidatedAt")
       .order("desc")
       .collect();
+
+    // Si es un dependiente, ve las suyas por ID o nombre de usuario
+    if (user.role === "DEPENDIENTE") {
+      const uName = user.username.toLowerCase();
+      const fName = user.fullName.toLowerCase();
+      consolidations = consolidations.filter(c => 
+        c.waiterUserId === user.id || 
+        (c.waiterUserName && (c.waiterUserName.toLowerCase() === uName || c.waiterUserName.toLowerCase() === fName))
+      );
+    }
+
     if (args.limit) {
       consolidations = consolidations.slice(0, args.limit);
     }
     return consolidations;
+  },
+});
+
+/**
+ * Eliminación irreversible de una consolidación de Dependiente archivada.
+ */
+export const deleteWaiterConsolidation = mutation({
+  args: {
+    id: v.string(),
+    userId: v.optional(v.string()),
+    sessionToken: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const auth = await authorizeUser(
+      ctx,
+      { sessionToken: args.sessionToken, userId: args.userId },
+      ["ADMIN_GENERAL", "DUENO", "DEPENDIENTE"],
+      { actionDescription: "eliminar consolidación de dependiente" }
+    );
+
+    const existing = await ctx.db
+      .query("waiter_consolidations")
+      .withIndex("by_custom_id", (q) => q.eq("id", args.id))
+      .first();
+
+    if (!existing) throw new Error("Consolidación no encontrada");
+
+    // Solo el propio dependiente o administradores pueden eliminar
+    if (auth.user.role === "DEPENDIENTE" && existing.waiterUserId !== auth.user.id) {
+       throw new Error("No tienes permiso para eliminar esta consolidación");
+    }
+
+    await ctx.db.delete(existing._id);
+    return { success: true };
   },
 });
 
@@ -5294,7 +5163,7 @@ export const resetOrdersPaymentsAndConsolidations = mutation({
   handler: async (ctx, args) => {
     const auth = await authorizeUser(
       ctx,
-      { sessionToken: args.sessionToken, userId: args.userId },
+      { sessionToken: args.sessionToken },
       ["ADMIN_GENERAL"],
       { actionDescription: "reiniciar órdenes, pagos y consolidaciones" }
     );
@@ -5319,7 +5188,7 @@ export const resetOrdersPaymentsAndConsolidations = mutation({
       await ctx.db.delete(payment._id);
     }
 
-    // 4. Eliminar consolidaciones (caja, dependiente, cocina, bartender)
+    // 4. Eliminar consolidaciones (caja, dependiente, cocina y rol retirado bartender)
     const cashierCons = await ctx.db.query("cashier_consolidations").collect();
     for (const c of cashierCons) {
       await ctx.db.delete(c._id);
@@ -5335,12 +5204,7 @@ export const resetOrdersPaymentsAndConsolidations = mutation({
       await ctx.db.delete(c._id);
     }
 
-    const bartenderCons = await ctx.db.query("bartender_consolidations").collect();
-    for (const c of bartenderCons) {
-      await ctx.db.delete(c._id);
-    }
-
-    // 5. Eliminar informes de dueño y cuadres de caja
+    // 5. Eliminar informes de dueño, cuadres de caja y jornadas archivadas
     const ownerReports = await ctx.db.query("owner_reports").collect();
     for (const r of ownerReports) {
       await ctx.db.delete(r._id);
@@ -5351,13 +5215,42 @@ export const resetOrdersPaymentsAndConsolidations = mutation({
       await ctx.db.delete(r._id);
     }
 
-    // 6. Eliminar notificaciones vinculadas a comandas u operaciones de caja/cocina
+    const archivedShifts = await ctx.db.query("archived_shifts").collect();
+    for (const s of archivedShifts) {
+      await ctx.db.delete(s._id);
+    }
+
+    // 6. Eliminar ventas y turnos operativos de tienda (Dependiente)
+    const shopSales = await ctx.db.query("shop_sales").collect();
+    for (const sale of shopSales) {
+      await ctx.db.delete(sale._id);
+    }
+
+    const shopShifts = await ctx.db.query("shop_shifts").collect();
+    for (const shift of shopShifts) {
+      await ctx.db.delete(shift._id);
+    }
+
+    // 7. Eliminar notificaciones operativas (conservando notificaciones de reservaciones/sistema)
     const notifications = await ctx.db.query("notifications").collect();
+    let deletedNotifications = 0;
     for (const n of notifications) {
-      if (n.orderId || n.targetRole === "COCINA" || n.targetRole === "CAJERO" || n.title.includes("Cobro") || n.title.includes("COMANDA")) {
+      if (
+        n.orderId ||
+        n.targetRole === "COCINA" ||
+        n.targetRole === "CAJERO" ||
+        n.targetRole === "DEPENDIENTE" ||
+        n.targetRole === "BARTENDER" ||
+        n.title.includes("Cobro") ||
+        n.title.includes("COMANDA")
+      ) {
         await ctx.db.delete(n._id);
+        deletedNotifications++;
       }
     }
+
+    const totalConsolidations =
+      cashierCons.length + waiterCons.length + kitchenCons.length;
 
     // Auditoría centralizada
     await ctx.db.insert("audit_logs", {
@@ -5370,17 +5263,23 @@ export const resetOrdersPaymentsAndConsolidations = mutation({
       result: "SUCCESS",
       timestamp: now,
       isOutsideShift: false,
-      details: `Reinicio de ${orders.length} órdenes, ${payments.length} pagos y consolidaciones. Reservaciones intactas.`,
+      details: `Reinicio operativo: ${orders.length} órdenes, ${payReqs.length} solicitudes, ${payments.length} pagos, ${totalConsolidations} consolidaciones, ${ownerReports.length} informes, ${cashReconciliations.length} cuadres, ${archivedShifts.length} jornadas archivadas, ${shopSales.length} ventas tienda. Reservaciones y datos maestros intactos.`,
     });
 
     return {
       success: true,
-      message: "Reinicio de órdenes, pagos y consolidaciones realizado con éxito.",
+      message: "Reinicio operativo realizado con éxito.",
       counts: {
         orders: orders.length,
         paymentRequests: payReqs.length,
         payments: payments.length,
-        consolidations: cashierCons.length + waiterCons.length + kitchenCons.length + bartenderCons.length,
+        consolidations: totalConsolidations,
+        ownerReports: ownerReports.length,
+        cashReconciliations: cashReconciliations.length,
+        archivedShifts: archivedShifts.length,
+        shopSales: shopSales.length,
+        shopShifts: shopShifts.length,
+        notifications: deletedNotifications,
       },
     };
   },

@@ -258,6 +258,7 @@ export const listReservations = query({
   args: {
     sessionToken: v.optional(v.string()),
     userId: v.optional(v.string()),
+    dvcCode: v.optional(v.string()),
     status: v.optional(v.string()),
     date: v.optional(v.string()),
     startDate: v.optional(v.string()),
@@ -265,9 +266,9 @@ export const listReservations = query({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    await authorizeOwnerOrAdmin(
+    await authorizeWebReservationAdmin(
       ctx,
-      { sessionToken: args.sessionToken, userId: args.userId },
+      { sessionToken: args.sessionToken, dvcCode: args.dvcCode },
       { actionDescription: "consultar reservaciones" }
     );
 
@@ -354,6 +355,7 @@ export const getReservation = query({
     reservationId: v.optional(v.string()),
     sessionToken: v.optional(v.string()),
     userId: v.optional(v.string()),
+    dvcCode: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const lookupId = (args.id || args.reservationId || "").trim();
@@ -361,13 +363,11 @@ export const getReservation = query({
       throw new Error("Debe proporcionar un ID de reservación.");
     }
 
-    if (args.sessionToken || args.userId) {
-      await authorizeOwnerOrAdmin(
-        ctx,
-        { sessionToken: args.sessionToken, userId: args.userId },
-        { actionDescription: "consultar detalle de reservación" }
-      );
-    }
+    await authorizeWebReservationAdmin(
+      ctx,
+      { sessionToken: args.sessionToken, dvcCode: args.dvcCode },
+      { actionDescription: "consultar detalle de reservación" }
+    );
 
     const byCustomId = await ctx.db
       .query("restaurant_reservations")
@@ -479,11 +479,13 @@ export const updateReservationStatus = mutation({
       v.literal("Negociación"),
       v.literal("Confirmado"),
       v.literal("Rechazado"),
+      v.literal("Cancelado"),
       v.literal("Consolidado"),
       v.literal("Marcada")
     ),
     sessionToken: v.optional(v.string()),
     userId: v.optional(v.string()),
+    dvcCode: v.optional(v.string()),
     tableId: v.optional(v.string()),
     tableNumber: v.optional(v.number()),
     assignedTableId: v.optional(v.string()),
@@ -497,9 +499,9 @@ export const updateReservationStatus = mutation({
     specialNotes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const auth = await authorizeOwnerOrAdmin(
+    const auth = await authorizeWebReservationAdmin(
       ctx,
-      { sessionToken: args.sessionToken, userId: args.userId },
+      { sessionToken: args.sessionToken, dvcCode: args.dvcCode },
       { actionDescription: "actualizar estado de reservación" }
     );
 
@@ -566,6 +568,12 @@ export const updateReservationStatus = mutation({
       patch.rejectionReason = args.rejectionReason?.trim() || "Capacidad no disponible";
       patch.rejectedAt = now;
       patch.rejectedByUserId = auth.user.id;
+    } else if (args.status === "Cancelado") {
+      if (args.rejectionReason?.trim()) {
+        patch.rejectionReason = args.rejectionReason.trim();
+      }
+      patch.cancelledAt = now;
+      patch.cancelledByUserId = auth.user.id;
     } else if (args.status === "Consolidado") {
       patch.consolidatedAt = now;
       patch.consolidatedByUserId = auth.user.id;
@@ -616,11 +624,12 @@ export const deleteReservation = mutation({
     id: v.string(),
     sessionToken: v.optional(v.string()),
     userId: v.optional(v.string()),
+    dvcCode: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await authorizeOwnerOrAdmin(
+    await authorizeWebReservationAdmin(
       ctx,
-      { sessionToken: args.sessionToken, userId: args.userId },
+      { sessionToken: args.sessionToken, dvcCode: args.dvcCode },
       { actionDescription: "eliminar reservación" }
     );
 
@@ -694,12 +703,13 @@ export const consolidateReservation = mutation({
     reservationId: v.string(),
     sessionToken: v.optional(v.string()),
     userId: v.optional(v.string()),
+    dvcCode: v.optional(v.string()),
     notes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const auth = await authorizeOwnerOrAdmin(
+    const auth = await authorizeWebReservationAdmin(
       ctx,
-      { sessionToken: args.sessionToken, userId: args.userId },
+      { sessionToken: args.sessionToken, dvcCode: args.dvcCode },
       { actionDescription: "consolidar reservación" }
     );
 
@@ -796,12 +806,13 @@ export const markReservationAsNoShow = mutation({
     reservationId: v.string(),
     sessionToken: v.optional(v.string()),
     userId: v.optional(v.string()),
+    dvcCode: v.optional(v.string()),
     notes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const auth = await authorizeOwnerOrAdmin(
+    const auth = await authorizeWebReservationAdmin(
       ctx,
-      { sessionToken: args.sessionToken, userId: args.userId },
+      { sessionToken: args.sessionToken, dvcCode: args.dvcCode },
       { actionDescription: "marcar inasistencia" }
     );
 
@@ -899,12 +910,13 @@ export const listCustomers = query({
   args: {
     sessionToken: v.optional(v.string()),
     userId: v.optional(v.string()),
+    dvcCode: v.optional(v.string()),
     searchQuery: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await authorizeOwnerOrAdmin(
+    await authorizeWebReservationAdmin(
       ctx,
-      { sessionToken: args.sessionToken, userId: args.userId },
+      { sessionToken: args.sessionToken, dvcCode: args.dvcCode },
       { actionDescription: "consultar clientes" }
     );
 
@@ -930,11 +942,12 @@ export const getCustomerDetails = query({
     customerId: v.string(),
     sessionToken: v.optional(v.string()),
     userId: v.optional(v.string()),
+    dvcCode: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await authorizeOwnerOrAdmin(
+    await authorizeWebReservationAdmin(
       ctx,
-      { sessionToken: args.sessionToken, userId: args.userId },
+      { sessionToken: args.sessionToken, dvcCode: args.dvcCode },
       { actionDescription: "consultar detalle de cliente" }
     );
 
@@ -967,11 +980,12 @@ export const getBarTerrazaStats = query({
   args: {
     sessionToken: v.optional(v.string()),
     userId: v.optional(v.string()),
+    dvcCode: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await authorizeOwnerOrAdmin(
+    await authorizeWebReservationAdmin(
       ctx,
-      { sessionToken: args.sessionToken, userId: args.userId },
+      { sessionToken: args.sessionToken, dvcCode: args.dvcCode },
       { actionDescription: "consultar estadísticas de Bar Terraza" }
     );
 
@@ -1211,8 +1225,15 @@ export const checkTableAvailability = query({
     partySize: v.optional(v.number()),
     sessionToken: v.optional(v.string()),
     userId: v.optional(v.string()),
+    dvcCode: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    await authorizeWebReservationAdmin(
+      ctx,
+      { sessionToken: args.sessionToken, dvcCode: args.dvcCode },
+      { actionDescription: "consultar disponibilidad de mesas" }
+    );
+
     let targetDate = args.date?.trim() || "";
     let targetTime = args.time?.trim() || "";
     let targetPartySize = args.partySize !== undefined && args.partySize > 0 ? Math.round(args.partySize) : 0;
@@ -1387,12 +1408,13 @@ export const assignTableAndConfirmReservation = mutation({
     tableId: v.string(),
     sessionToken: v.optional(v.string()),
     userId: v.optional(v.string()),
+    dvcCode: v.optional(v.string()),
     forceOverrideSchedule: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
-    const auth = await authorizeOwnerOrAdmin(
+    const auth = await authorizeWebReservationAdmin(
       ctx,
-      { sessionToken: args.sessionToken, userId: args.userId },
+      { sessionToken: args.sessionToken, dvcCode: args.dvcCode },
       { actionDescription: "asignar mesa y confirmar reservación" }
     );
 
@@ -1578,8 +1600,15 @@ export const findAlternativeSlots = query({
     daysAhead: v.optional(v.number()),
     sessionToken: v.optional(v.string()),
     userId: v.optional(v.string()),
+    dvcCode: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    await authorizeWebReservationAdmin(
+      ctx,
+      { sessionToken: args.sessionToken, dvcCode: args.dvcCode },
+      { actionDescription: "buscar horarios alternativos" }
+    );
+
     let targetDate = args.date?.trim() || "";
     let targetTime = args.time?.trim() || "";
     let targetPartySize = args.partySize !== undefined && args.partySize > 0 ? Math.round(args.partySize) : 0;
@@ -1753,11 +1782,12 @@ export const acceptProposedAlternative = mutation({
     reservationId: v.string(),
     sessionToken: v.optional(v.string()),
     userId: v.optional(v.string()),
+    dvcCode: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const auth = await authorizeOwnerOrAdmin(
+    const auth = await authorizeWebReservationAdmin(
       ctx,
-      { sessionToken: args.sessionToken, userId: args.userId },
+      { sessionToken: args.sessionToken, dvcCode: args.dvcCode },
       { actionDescription: "aceptar propuesta de horario alternativo" }
     );
 
